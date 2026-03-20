@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Grid, List, Edit, Trash2, Plus, Beaker, X } from 'lucide-react';
+import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download } from 'lucide-react';
 
 const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) => {
   const [viewMode, setViewMode] = useState('grid');
@@ -21,42 +21,58 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) =
     }
   };
 
+  const handleDownloadExcel = () => {
+    // Placeholder: The backend API call for streaming the Excel file will go here
+    console.log("Excel download triggered. Ready for backend integration.");
+    alert("Excel download feature will be available once the backend is connected.");
+  };
+
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Perfume Formulas</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your ingredient breakdowns and costs</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Perfume Formulas</h1>
+            <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Manage your ingredient breakdowns and costs</p>
           </div>
           
-          <div className="flex flex-wrap gap-4">
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center transition-colors">
+          <div className="flex flex-col sm:flex-row flex-wrap w-full md:w-auto gap-3">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center justify-center sm:justify-start transition-colors">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                className={`p-2 rounded-md transition-colors flex-1 sm:flex-none flex justify-center ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
                 <Grid size={20} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                className={`p-2 rounded-md transition-colors flex-1 sm:flex-none flex justify-center ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
                 <List size={20} />
               </button>
             </div>
 
             <button 
+              onClick={handleDownloadExcel}
+              className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
+            >
+              <Download size={20} />
+              <span className="hidden sm:inline">Export Excel</span>
+              <span className="sm:hidden">Export</span>
+            </button>
+
+            <button 
               onClick={onManageIngredients}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
             >
               <Beaker size={20} />
-              Manage Ingredients
+              <span className="hidden sm:inline">Manage Ingredients</span>
+              <span className="sm:hidden">Ingredients</span>
             </button>
             
             <button 
               onClick={() => setIsNameModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
             >
               <Plus size={20} />
               New Formula
@@ -69,48 +85,81 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) =
             <p className="text-gray-500 dark:text-gray-400">No perfumes found. Create your first formula!</p>
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-4"}>
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-3"}>
             {perfumes.map((perfume) => (
-              <div key={perfume._id} className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all ${viewMode === 'list' ? 'flex justify-between items-center' : ''}`}>
-                <div className={viewMode === 'list' ? 'flex-1' : ''}>
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{perfume.name}</h3>
-                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2.5 py-0.5 rounded border border-green-200 dark:border-green-800 transition-colors">
-                      Rs {perfume.pricePer50ml.toFixed(2)} / 50ml
-                    </span>
+              viewMode === 'grid' ? (
+                <div key={perfume._id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{perfume.name}</h3>
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2.5 py-0.5 rounded border border-green-200 dark:border-green-800 transition-colors">
+                        Rs {perfume.pricePer50ml.toFixed(2)} / 50ml
+                      </span>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
+                        <span className="font-medium">Total Batch:</span> 
+                        <span>{perfume.totalVolume}ml</span>
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
+                        <span className="font-medium">Ingredients:</span> 
+                        <span>{perfume.formula.length}</span>
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        Last edited: {perfume.lastModified}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-4 space-y-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
-                      <span className="font-medium">Total Batch:</span> 
-                      <span>{perfume.totalVolume}ml</span>
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
-                      <span className="font-medium">Ingredients:</span> 
-                      <span>{perfume.formula.length}</span>
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                      Last edited: {perfume.lastModified}
-                    </p>
-                  </div>
-                </div>
 
-                <div className={`flex gap-2 ${viewMode === 'grid' ? 'mt-6 pt-4 border-t border-gray-100 dark:border-gray-700' : 'ml-6'}`}>
-                  <button 
-                    onClick={() => onEdit(perfume)}
-                    className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"
-                  >
-                    <Edit size={16} />
-                    {viewMode === 'grid' && "Edit"}
-                  </button>
-                  <button 
-                    onClick={() => onDelete(perfume._id)}
-                    className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                    {viewMode === 'grid' && "Delete"}
-                  </button>
+                  <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <button 
+                      onClick={() => onEdit(perfume)}
+                      className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"
+                    >
+                      <Edit size={16} /> Edit
+                    </button>
+                    <button 
+                      onClick={() => onDelete(perfume._id)}
+                      className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={16} /> Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div key={perfume._id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:shadow-sm transition-all">
+                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 w-full">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-[150px]">{perfume.name}</h3>
+                    
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
+                        Rs {perfume.pricePer50ml.toFixed(2)}
+                      </span>
+                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
+                      <span>{perfume.totalVolume}ml</span>
+                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
+                      <span>{perfume.formula.length} parts</span>
+                      <span className="hidden md:inline text-gray-300 dark:text-gray-600">•</span>
+                      <span className="hidden md:inline text-xs text-gray-400">{perfume.lastModified}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-0 border-gray-100 dark:border-gray-700 pt-3 sm:pt-0">
+                    <button 
+                      onClick={() => onEdit(perfume)}
+                      className="flex-1 sm:flex-none p-2 sm:px-3 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex justify-center items-center"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button 
+                      onClick={() => onDelete(perfume._id)}
+                      className="flex-1 sm:flex-none p-2 sm:px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex justify-center items-center"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              )
             ))}
           </div>
         )}
@@ -132,12 +181,12 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) =
                 placeholder="e.g. Summer Breeze"
                 value={newPerfumeName}
                 onChange={(e) => setNewPerfumeName(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-2 mb-6 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
+                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 mb-6 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
               />
               <button 
                 type="submit"
                 disabled={!newPerfumeName.trim()}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white font-medium py-2 rounded-lg transition-colors"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white font-medium py-3 sm:py-2 rounded-lg transition-colors"
               >
                 Start Formulating
               </button>

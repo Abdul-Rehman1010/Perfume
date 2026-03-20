@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import PerfumeDashboard from './components/PerfumeDashboard';
 import PerfumeEditor from './components/PerfumeEditor';
 import IngredientsDashboard from './components/IngredientsDashboard';
 import IngredientModal from './components/IngredientModal';
+
+const API_URL = 'http://localhost:5000/api';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -11,31 +14,23 @@ function App() {
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
   
-  const [inventory, setInventory] = useState([
-    { id: '1', name: 'Rose Absolute', pricePer50ml: 100 },
-    { id: '2', name: 'Bergamot', pricePer50ml: 45 },
-    { id: '3', name: 'Sandalwood', pricePer50ml: 120 },
-    { id: '4', name: 'Vanilla Extract', pricePer50ml: 30 },
-    { id: '5', name: 'Oud', pricePer50ml: 250 },
-  ]);
-
+  const [inventory, setInventory] = useState([]);
   const [perfumes, setPerfumes] = useState([]);
 
   useEffect(() => {
-    const mockDatabase = [
-      { 
-        _id: '65f1a2b3c4d5', 
-        name: 'Midnight Rose', 
-        totalVolume: 100, 
-        pricePer50ml: 85.50,
-        formula: [
-          { ingredientId: '1', name: 'Rose Absolute', amount: 60, pricePer50ml: 100 },
-          { ingredientId: '2', name: 'Bergamot', amount: 40, pricePer50ml: 63.75 }
-        ],
-        lastModified: '2026-03-20'
+    const fetchInitialData = async () => {
+      try {
+        const [ingredientsRes, perfumesRes] = await Promise.all([
+          axios.get(`${API_URL}/ingredients`),
+          axios.get(`${API_URL}/perfumes`)
+        ]);
+        setInventory(ingredientsRes.data);
+        setPerfumes(perfumesRes.data);
+      } catch (error) {
+        console.error(error);
       }
-    ];
-    setPerfumes(mockDatabase);
+    };
+    fetchInitialData();
   }, []);
 
   const navigateToEditor = (perfumeData) => {
@@ -62,36 +57,46 @@ function App() {
     setIsIngredientModalOpen(true);
   };
 
-  const handleSaveIngredient = (ingredientData) => {
-    if (ingredientData.id) {
-      setInventory(inventory.map(inv => inv.id === ingredientData.id ? ingredientData : inv));
-      
-      setPerfumes(perfumes.map(perfume => {
-        const updatedFormula = perfume.formula.map(item => 
-          item.ingredientId === ingredientData.id 
-            ? { ...item, name: ingredientData.name, pricePer50ml: ingredientData.pricePer50ml }
-            : item
-        );
+  const handleSaveIngredient = async (ingredientData) => {
+    try {
+      if (ingredientData.id) {
+        const res = await axios.put(`${API_URL}/ingredients/${ingredientData.id}`, ingredientData);
+        const updatedIng = res.data;
         
-        const newTotalPrice = updatedFormula.reduce((total, item) => {
-          const percentage = item.amount / perfume.totalVolume;
-          return total + (percentage * item.pricePer50ml);
-        }, 0);
+        setInventory(inventory.map(inv => inv.id === updatedIng.id ? updatedIng : inv));
+        
+        const updatedPerfumes = perfumes.map(perfume => {
+          const updatedFormula = perfume.formula.map(item => 
+            item.ingredientId === updatedIng.id 
+              ? { ...item, name: updatedIng.name, pricePer50ml: updatedIng.pricePer50ml }
+              : item
+          );
+          
+          const newTotalPrice = updatedFormula.reduce((total, item) => {
+            const percentage = item.amount / perfume.totalVolume;
+            return total + (percentage * updatedIng.pricePer50ml);
+          }, 0);
 
-        return { ...perfume, formula: updatedFormula, pricePer50ml: newTotalPrice };
-      }));
-      
-    } else {
-      const newIngredient = {
-        ...ingredientData,
-        id: Date.now().toString() 
-      };
-      setInventory([...inventory, newIngredient]);
+          return { ...perfume, formula: updatedFormula, pricePer50ml: newTotalPrice };
+        });
+
+        setPerfumes(updatedPerfumes);
+        
+        updatedPerfumes.forEach(async (perfume) => {
+          await axios.put(`${API_URL}/perfumes/${perfume._id}`, perfume);
+        });
+
+      } else {
+        const res = await axios.post(`${API_URL}/ingredients`, ingredientData);
+        setInventory([...inventory, res.data]);
+      }
+      setIsIngredientModalOpen(false);
+    } catch (error) {
+      console.error(error);
     }
-    setIsIngredientModalOpen(false);
   };
 
-  const handleDeleteIngredient = (id) => {
+  const handleDeleteIngredient = async (id) => {
     const isUsedInFormula = perfumes.some(perfume => 
       perfume.formula.some(item => item.ingredientId === id)
     );
@@ -102,33 +107,41 @@ function App() {
     }
 
     if (window.confirm('Are you sure you want to delete this ingredient?')) {
-      setInventory(inventory.filter(inv => inv.id !== id));
+      try {
+        await axios.delete(`${API_URL}/ingredients/${id}`);
+        setInventory(inventory.filter(inv => inv.id !== id));
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
-  const handleSavePerfume = (perfumeData) => {
+  const handleSavePerfume = async (perfumeData) => {
     const currentDate = new Date().toISOString().split('T')[0];
+    const dataToSave = { ...perfumeData, lastModified: currentDate };
     
-    if (perfumeData._id) {
-      setPerfumes(perfumes.map(p => 
-        p._id === perfumeData._id 
-          ? { ...perfumeData, lastModified: currentDate } 
-          : p
-      ));
-    } else {
-      const newPerfume = {
-        ...perfumeData,
-        _id: Date.now().toString(),
-        lastModified: currentDate
-      };
-      setPerfumes([...perfumes, newPerfume]);
+    try {
+      if (perfumeData._id) {
+        const res = await axios.put(`${API_URL}/perfumes/${perfumeData._id}`, dataToSave);
+        setPerfumes(perfumes.map(p => p._id === perfumeData._id ? res.data : p));
+      } else {
+        const res = await axios.post(`${API_URL}/perfumes`, dataToSave);
+        setPerfumes([...perfumes, res.data]);
+      }
+      navigateToDashboard();
+    } catch (error) {
+      console.error(error);
     }
-    navigateToDashboard();
   };
 
-  const handleDeletePerfume = (id) => {
+  const handleDeletePerfume = async (id) => {
     if (window.confirm('Are you sure you want to delete this formula?')) {
-      setPerfumes(perfumes.filter(perfume => perfume._id !== id));
+      try {
+        await axios.delete(`${API_URL}/perfumes/${id}`);
+        setPerfumes(perfumes.filter(perfume => perfume._id !== id));
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
 
