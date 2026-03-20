@@ -133,7 +133,7 @@ function App() {
   };
 
   return (
-    <div className="App font-sans text-gray-900 bg-gray-50 min-h-screen">
+    <div className="App font-sans text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
       {currentView === 'dashboard' && (
         <PerfumeDashboard 
           perfumes={perfumes}

@@ -71,25 +71,25 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
 
   return (
     <div className="p-8 max-w-7xl mx-auto flex flex-col h-screen">
-      <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <header className="flex justify-between items-center mb-8 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg">
+          <button onClick={onBack} className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{perfume?.name}</h1>
-            <p className="text-sm text-gray-500">{perfume?._id ? 'Editing Formula' : 'New Formula'}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{perfume?.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{perfume?._id ? 'Editing Formula' : 'New Formula'}</p>
           </div>
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <p className="text-sm text-gray-500 font-medium">Final Cost / 50ml</p>
-            <p className="text-2xl font-bold text-green-600">Rs {finalPricePer50ml.toFixed(2)}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Final Cost / 50ml</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">Rs {finalPricePer50ml.toFixed(2)}</p>
           </div>
           <button 
             onClick={handleSaveClick}
             disabled={formula.length === 0}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-medium transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-6 py-3 rounded-lg flex items-center gap-2 font-medium transition-colors"
           >
             <Save size={20} />
             Save Perfume
@@ -99,21 +99,21 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
 
       <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
         <div className="w-full lg:w-1/3 flex flex-col gap-6">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Formulation Pad</h2>
-              <button onClick={onAddIngredient} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Formulation Pad</h2>
+              <button onClick={onAddIngredient} className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors">
                 + New Ingredient
               </button>
             </div>
             
             <form onSubmit={handleAddAmount} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Ingredient</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Ingredient</label>
                 <select 
                   value={selectedIngredient}
                   onChange={(e) => setSelectedIngredient(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
                 >
                   <option value="">-- Choose --</option>
                   {inventory.map(inv => (
@@ -124,39 +124,39 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount to Add (ml/drops)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount to Add (ml/drops)</label>
                 <input 
                   type="number" 
                   step="0.01"
                   min="0.01"
                   value={amountToAdd}
                   onChange={(e) => setAmountToAdd(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
                   placeholder="e.g. 2.5"
                 />
               </div>
               <button 
                 type="submit"
                 disabled={!selectedIngredient || !amountToAdd}
-                className="w-full bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white font-medium py-3 rounded-lg flex justify-center items-center gap-2"
+                className="w-full bg-gray-900 dark:bg-gray-700 hover:bg-black dark:hover:bg-gray-600 disabled:bg-gray-300 dark:disabled:bg-gray-800 text-white font-medium py-3 rounded-lg flex justify-center items-center gap-2 transition-colors"
               >
                 <Plus size={20} /> Add to Mix
               </button>
             </form>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-1 flex flex-col min-h-0">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex-1 flex flex-col min-h-0 transition-colors">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
               <History size={18} /> Addition Log
             </h2>
             <div className="overflow-y-auto pr-2 space-y-3 flex-1">
               {additionLog.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center mt-10">No ingredients added yet.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center mt-10">No ingredients added yet.</p>
               ) : (
                 additionLog.map(log => (
-                  <div key={log.id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                    <span className="text-gray-600">{log.time}</span>
-                    <span className="font-medium text-gray-900">+{log.amount} {log.name}</span>
+                  <div key={log.id} className="flex justify-between items-center text-sm border-b border-gray-50 dark:border-gray-700 pb-2">
+                    <span className="text-gray-600 dark:text-gray-400">{log.time}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">+{log.amount} {log.name}</span>
                   </div>
                 ))
               )}
@@ -164,29 +164,29 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
           </div>
         </div>
 
-        <div className="w-full lg:w-2/3 bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col min-h-0">
+        <div className="w-full lg:w-2/3 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col min-h-0 transition-colors">
           <div className="flex justify-between items-end mb-6">
             <div>
-              <h2 className="text-xl font-bold">Final Formula Breakdown</h2>
-              <p className="text-gray-500 text-sm mt-1">Total Volume: <span className="font-bold text-gray-900">{totalVolume}</span></p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Final Formula Breakdown</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume}</span></p>
             </div>
           </div>
 
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="py-3 px-4 font-semibold text-gray-600 text-sm rounded-tl-lg">Ingredient</th>
-                  <th className="py-3 px-4 font-semibold text-gray-600 text-sm">Total Amount</th>
-                  <th className="py-3 px-4 font-semibold text-gray-600 text-sm">Percentage</th>
-                  <th className="py-3 px-4 font-semibold text-gray-600 text-sm">Cost Share</th>
-                  <th className="py-3 px-4 font-semibold text-gray-600 text-sm rounded-tr-lg w-16"></th>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                  <th className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-sm rounded-tl-lg">Ingredient</th>
+                  <th className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-sm">Total Amount</th>
+                  <th className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-sm">Percentage</th>
+                  <th className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-sm">Cost Share</th>
+                  <th className="py-3 px-4 font-semibold text-gray-600 dark:text-gray-300 text-sm rounded-tr-lg w-16"></th>
                 </tr>
               </thead>
               <tbody>
                 {formula.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="text-center py-12 text-gray-400">
+                    <td colSpan="5" className="text-center py-12 text-gray-400 dark:text-gray-500">
                       Start adding ingredients on the left to see the breakdown.
                     </td>
                   </tr>
@@ -196,22 +196,22 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                     const costContribution = (item.amount / totalVolume) * item.pricePer50ml;
                     
                     return (
-                      <tr key={item.ingredientId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium text-gray-900">{item.name}</td>
-                        <td className="py-3 px-4 text-gray-600">{item.amount.toFixed(2)}</td>
+                      <tr key={item.ingredientId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="py-3 px-4 font-medium text-gray-900 dark:text-gray-100">{item.name}</td>
+                        <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{item.amount.toFixed(2)}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <span className="w-12 text-gray-900 font-medium">{percentage.toFixed(1)}%</span>
-                            <div className="w-24 bg-gray-200 rounded-full h-2">
-                              <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
+                            <span className="w-12 text-gray-900 dark:text-gray-100 font-medium">{percentage.toFixed(1)}%</span>
+                            <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                              <div className="bg-indigo-500 dark:bg-indigo-400 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-gray-600">Rs {costContribution.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-gray-600 dark:text-gray-300">Rs {costContribution.toFixed(2)}</td>
                         <td className="py-3 px-4 text-right">
                           <button 
                             onClick={() => handleRemoveIngredient(item.ingredientId)}
-                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            className="p-1.5 text-red-400 hover:text-red-600 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
                           >
                             <Trash2 size={16} />
                           </button>

@@ -38,19 +38,19 @@ const IngredientModal = ({ isOpen, onClose, onSave, initialData }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl transition-colors">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {initialData ? 'Edit Ingredient' : 'Add New Ingredient'}
           </h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             <X size={24} />
           </button>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Ingredient Name</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Ingredient Name</label>
             <input
               type="text"
               autoFocus
@@ -58,12 +58,12 @@ const IngredientModal = ({ isOpen, onClose, onSave, initialData }) => {
               placeholder="e.g., Jasmine Extract"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Price per 50ml (Rs)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Price per 50ml (Rs)</label>
             <input
               type="number"
               required
@@ -72,7 +72,7 @@ const IngredientModal = ({ isOpen, onClose, onSave, initialData }) => {
               placeholder="e.g., 45.50"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
             />
           </div>
           
@@ -80,14 +80,14 @@ const IngredientModal = ({ isOpen, onClose, onSave, initialData }) => {
             <button 
               type="button"
               onClick={handleClose}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 rounded-lg transition-colors"
+              className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2.5 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button 
               type="submit"
               disabled={!name.trim() || !price}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white font-semibold py-2.5 rounded-lg transition-colors"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 dark:disabled:bg-emerald-800/50 text-white font-semibold py-2.5 rounded-lg transition-colors"
             >
               {initialData ? 'Update Details' : 'Save Ingredient'}
             </button>
