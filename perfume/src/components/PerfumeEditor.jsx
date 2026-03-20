@@ -84,7 +84,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
         <div className="flex items-center gap-6">
           <div className="text-right">
             <p className="text-sm text-gray-500 font-medium">Final Cost / 50ml</p>
-            <p className="text-2xl font-bold text-green-600">${finalPricePer50ml.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-green-600">Rs {finalPricePer50ml.toFixed(2)}</p>
           </div>
           <button 
             onClick={handleSaveClick}
@@ -118,7 +118,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                   <option value="">-- Choose --</option>
                   {inventory.map(inv => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.name} (${inv.pricePer50ml}/50ml)
+                      {inv.name} (Rs {inv.pricePer50ml}/50ml)
                     </option>
                   ))}
                 </select>
@@ -207,7 +207,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-gray-600">${costContribution.toFixed(2)}</td>
+                        <td className="py-3 px-4 text-gray-600">Rs {costContribution.toFixed(2)}</td>
                         <td className="py-3 px-4 text-right">
                           <button 
                             onClick={() => handleRemoveIngredient(item.ingredientId)}

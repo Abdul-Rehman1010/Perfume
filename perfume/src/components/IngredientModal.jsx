@@ -63,7 +63,7 @@ const IngredientModal = ({ isOpen, onClose, onSave, initialData }) => {
           </div>
           
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Price per 50ml ($)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Price per 50ml (Rs)</label>
             <input
               type="number"
               required

@@ -43,7 +43,7 @@ const IngredientsDashboard = ({ inventory, onBack, onAdd, onEdit, onDelete }) =>
               inventory.map((item) => (
                 <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                   <td className="py-4 px-6 font-medium text-gray-900">{item.name}</td>
-                  <td className="py-4 px-6 text-emerald-600 font-medium">${item.pricePer50ml.toFixed(2)}</td>
+                  <td className="py-4 px-6 text-emerald-600 font-medium">Rs {item.pricePer50ml.toFixed(2)}</td>
                   <td className="py-4 px-6 flex justify-end gap-2">
                     <button 
                       onClick={() => onEdit(item)}

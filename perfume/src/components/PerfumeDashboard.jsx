@@ -76,7 +76,7 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) =
                   <div className="flex justify-between items-start">
                     <h3 className="text-xl font-semibold">{perfume.name}</h3>
                     <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded border border-green-200">
-                      ${perfume.pricePer50ml.toFixed(2)} / 50ml
+                      Rs {perfume.pricePer50ml.toFixed(2)} / 50ml
                     </span>
                   </div>
                   <div className="mt-4 space-y-2">
