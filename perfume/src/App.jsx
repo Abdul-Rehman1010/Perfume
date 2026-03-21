@@ -7,7 +7,7 @@ import IngredientModal from './components/IngredientModal';
 import PasswordModal from './components/PasswordModal';
 import LoginPage from './components/LoginPage';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://perfume-one-black.vercel.app/api';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');

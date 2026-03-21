@@ -16,7 +16,7 @@ const PasswordModal = ({ isOpen, onClose }) => {
     setSuccess('');
 
     try {
-      const res = await axios.put('http://localhost:5000/api/auth/password', {
+      const res = await axios.put('https://perfume-one-black.vercel.app/api/auth/password', {
         currentPassword,
         newPassword
       });

@@ -17,7 +17,7 @@ const LoginPage = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { password });
+      const res = await axios.post('https://perfume-one-black.vercel.app/api/auth/login', { password });
       if (res.data.success) {
         onLoginSuccess();
       }
@@ -35,7 +35,7 @@ const LoginPage = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/reset', { 
+      const res = await axios.post('https://perfume-one-black.vercel.app/api/auth/reset', { 
         masterKey, 
         newPassword 
       });
