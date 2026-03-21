@@ -13,9 +13,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected successfully"))
-  .catch((err) => console.log(err));
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+  
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      family: 4
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 app.post('/api/auth/login', async (req, res) => {
   try {
