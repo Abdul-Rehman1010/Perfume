@@ -4,34 +4,49 @@ import PerfumeDashboard from './components/PerfumeDashboard';
 import PerfumeEditor from './components/PerfumeEditor';
 import IngredientsDashboard from './components/IngredientsDashboard';
 import IngredientModal from './components/IngredientModal';
+import PasswordModal from './components/PasswordModal';
+import LoginPage from './components/LoginPage';
 
 const API_URL = 'http://localhost:5000/api';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
   const [activePerfume, setActivePerfume] = useState(null);
-  
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
-  
   const [inventory, setInventory] = useState([]);
   const [perfumes, setPerfumes] = useState([]);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [ingredientsRes, perfumesRes] = await Promise.all([
-          axios.get(`${API_URL}/ingredients`),
-          axios.get(`${API_URL}/perfumes`)
-        ]);
-        setInventory(ingredientsRes.data);
-        setPerfumes(perfumesRes.data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    fetchInitialData();
-  }, []);
+    if (isLoggedIn) {
+      const fetchInitialData = async () => {
+        try {
+          const [ingredientsRes, perfumesRes] = await Promise.all([
+            axios.get(`${API_URL}/ingredients`),
+            axios.get(`${API_URL}/perfumes`)
+          ]);
+          setInventory(ingredientsRes.data);
+          setPerfumes(perfumesRes.data);
+        } catch (error) {
+          console.error(error);
+        }
+      };
+      fetchInitialData();
+    }
+  }, [isLoggedIn]);
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem('isLoggedIn', 'true');
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    setIsLoggedIn(false);
+    setCurrentView('dashboard');
+  };
 
   const navigateToEditor = (perfumeData) => {
     setActivePerfume(perfumeData);
@@ -145,6 +160,10 @@ function App() {
     }
   };
 
+  if (!isLoggedIn) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="App font-sans text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
       {currentView === 'dashboard' && (
@@ -153,6 +172,8 @@ function App() {
           onEdit={navigateToEditor} 
           onDelete={handleDeletePerfume}
           onManageIngredients={navigateToIngredients}
+          onChangePassword={() => setIsPasswordModalOpen(true)}
+          onLogout={handleLogout}
         />
       )}
       
@@ -181,6 +202,11 @@ function App() {
         initialData={editingIngredient}
         onClose={() => setIsIngredientModalOpen(false)}
         onSave={handleSaveIngredient}
+      />
+
+      <PasswordModal 
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
       />
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download } from 'lucide-react';
+import axios from 'axios';
+import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut } from 'lucide-react';
 
-const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) => {
+const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
@@ -21,62 +22,97 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients }) =
     }
   };
 
-  const handleDownloadExcel = () => {
-    // Placeholder: The backend API call for streaming the Excel file will go here
-    console.log("Excel download triggered. Ready for backend integration.");
-    alert("Excel download feature will be available once the backend is connected.");
+  const handleDownloadExcel = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/export/perfumes', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Perfume_Formulas.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to download the Excel file.");
+    }
   };
 
   return (
     <div className="p-4 sm:p-8">
       <div className="max-w-6xl mx-auto">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
+        
+        <header className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
+          
+          <div className="w-full md:w-auto">
             <h1 className="text-2xl sm:text-3xl font-bold">Perfume Formulas</h1>
             <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Manage your ingredient breakdowns and costs</p>
           </div>
           
-          <div className="flex flex-col sm:flex-row flex-wrap w-full md:w-auto gap-3">
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 flex items-center justify-center sm:justify-start transition-colors">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors flex-1 sm:flex-none flex justify-center ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          <div className="flex flex-col w-full md:w-auto gap-3 md:items-end">
+            
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <button 
+                onClick={onLogout}
+                className="w-full sm:w-auto bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors border border-red-200 dark:border-red-800 text-sm sm:text-base shadow-sm"
               >
-                <Grid size={20} />
+                <LogOut size={18} />
+                <span>Logout</span>
               </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-colors flex-1 sm:flex-none flex justify-center ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+
+              <button 
+                onClick={onChangePassword}
+                className="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
               >
-                <List size={20} />
+                <Lock size={18} />
+                <span>Change Password</span>
+              </button>
+
+              <button 
+                onClick={handleDownloadExcel}
+                className="w-full sm:w-auto bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
+              >
+                <Download size={18} />
+                <span>Export</span>
               </button>
             </div>
 
-            <button 
-              onClick={handleDownloadExcel}
-              className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
-            >
-              <Download size={20} />
-              <span className="hidden sm:inline">Export Excel</span>
-              <span className="sm:hidden">Export</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-stretch sm:items-center">
+              <div className="flex w-full sm:w-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 transition-colors shadow-sm">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                >
+                  <Grid size={18} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                >
+                  <List size={18} />
+                </button>
+              </div>
 
-            <button 
-              onClick={onManageIngredients}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
-            >
-              <Beaker size={20} />
-              <span className="hidden sm:inline">Manage Ingredients</span>
-              <span className="sm:hidden">Ingredients</span>
-            </button>
-            
-            <button 
-              onClick={() => setIsNameModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 sm:py-2 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors w-full sm:w-auto shadow-sm"
-            >
-              <Plus size={20} />
-              New Formula
-            </button>
+              <button 
+                onClick={onManageIngredients}
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
+              >
+                <Beaker size={18} />
+                <span>Ingredients</span>
+              </button>
+              
+              <button 
+                onClick={() => setIsNameModalOpen(true)}
+                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
+              >
+                <Plus size={18} />
+                <span>New Formula</span>
+              </button>
+            </div>
+
           </div>
         </header>
 
