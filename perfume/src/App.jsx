@@ -10,7 +10,7 @@ import LoginPage from './components/LoginPage';
 const API_URL = 'https://perfume-one-black.vercel.app/api';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [isLoggedIn, setIsLoggedIn] = useState(sessionStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
   const [activePerfume, setActivePerfume] = useState(null);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
@@ -38,12 +38,12 @@ function App() {
   }, [isLoggedIn]);
 
   const handleLoginSuccess = () => {
-    localStorage.setItem('isLoggedIn', 'true');
+    sessionStorage.setItem('isLoggedIn', 'true');
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('isLoggedIn');
     setIsLoggedIn(false);
     setCurrentView('dashboard');
   };
