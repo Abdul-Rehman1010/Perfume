@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Save, Plus, Trash2, History, AlertCircle } from 'lucide-react';
 
-const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIngredient }) => {
+const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave, onAddIngredient }) => {
   const [formula, setFormula] = useState([]);
   const [additionLog, setAdditionLog] = useState([]);
   const [selectedIngredient, setSelectedIngredient] = useState('');
@@ -20,6 +20,38 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
     }, 0);
   }, [formula, totalVolume]);
 
+  // NEW: Helper function to check strict percentage matches
+  const checkDuplicateFormula = () => {
+    if (formula.length === 0 || totalVolume === 0) return false;
+
+    // Create a normalized percentage signature for the current formula
+    const currentSignature = [...formula]
+      .map(item => ({
+        id: item.ingredientId,
+        pct: ((item.amount / totalVolume) * 100).toFixed(2)
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID so order doesn't matter
+    
+    const currentSigString = JSON.stringify(currentSignature);
+
+    // Compare against existing formulas
+    for (const p of perfumes) {
+      if (p.totalVolume === 0 || p.formula.length === 0) continue;
+
+      const compareSignature = [...p.formula]
+        .map(item => ({
+          id: item.ingredientId,
+          pct: ((item.amount / p.totalVolume) * 100).toFixed(2)
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+      if (currentSigString === JSON.stringify(compareSignature)) {
+        return p.name; // Return duplicate name to alert the user
+      }
+    }
+    return false;
+  };
+
   const handleAddAmount = (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -28,7 +60,6 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
     const ingredientData = inventory.find(inv => inv.id === selectedIngredient);
     const amountNum = parseFloat(amountToAdd);
 
-    // FORMULA MODE VALIDATION (Max 100)
     if (mode === 'formula') {
       const existingItem = formula.find(item => item.ingredientId === selectedIngredient);
       const currentTotalWithoutThis = existingItem ? totalVolume - existingItem.amount : totalVolume;
@@ -52,7 +83,7 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
       if (existing) {
         return prevFormula.map(item => 
           item.ingredientId === selectedIngredient 
-            ? { ...item, amount: mode === 'formula' ? amountNum : item.amount + amountNum } // Replace in Formula mode, Add in Lab mode
+            ? { ...item, amount: mode === 'formula' ? amountNum : item.amount + amountNum }
             : item
         );
       } else {
@@ -74,6 +105,13 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
   };
 
   const handleSaveClick = () => {
+    // NEW: Run the duplication check before saving
+    const duplicateName = checkDuplicateFormula();
+    if (duplicateName) {
+      setErrorMsg(`Cannot save! This exact percentage breakdown already exists in the formula: "${duplicateName}".`);
+      return; 
+    }
+
     onSave({
       _id: null,
       name: perfumeName,
@@ -83,12 +121,12 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
     });
   };
 
-  // Determine if Save button should be disabled based on mode
   const isSaveDisabled = mode === 'formula' ? totalVolume !== 100 : formula.length === 0;
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col min-h-screen">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 sm:mb-8 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+       {/* ... (Keep existing UI rendering exactly the same as previously provided) ... */}
+       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 sm:mb-8 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <button onClick={onBack} className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors shrink-0">
             <ArrowLeft size={20} />
@@ -106,7 +144,6 @@ const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIng
         
         <div className="flex items-center justify-between w-full md:w-auto gap-4 sm:gap-6 border-t md:border-0 border-gray-100 dark:border-gray-700 pt-4 md:pt-0">
           
-          {/* Dynamic Header Display based on mode */}
           {mode === 'formula' ? (
             <div className="text-left md:text-right">
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Formula Completion</p>

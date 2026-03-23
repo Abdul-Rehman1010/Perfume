@@ -201,7 +201,8 @@ function App() {
       )}
       
       {currentView === 'creator' && (
-        <PerfumeCreator 
+        <PerfumeCreator
+          perfumes={perfumes} 
           perfumeName={creatorPerfumeName} 
           mode={creatorMode} 
           inventory={inventory}
@@ -213,6 +214,7 @@ function App() {
 
       {currentView === 'editor' && (
         <PerfumeEditor 
+          perfumes={perfumes}
           perfume={activePerfume} 
           inventory={inventory}
           onBack={navigateToDashboard} 

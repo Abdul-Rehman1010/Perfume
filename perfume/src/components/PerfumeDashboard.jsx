@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut } from 'lucide-react';
+import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut, AlertCircle } from 'lucide-react'; // Added AlertCircle
 
 const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
-  const [creationMode, setCreationMode] = useState('lab'); // NEW: Modal state for mode
+  const [creationMode, setCreationMode] = useState('lab');
+  const [nameError, setNameError] = useState(''); // NEW: Error state for duplicate name
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    if (newPerfumeName.trim()) {
+    setNameError(''); // Reset error
+    
+    const trimmedName = newPerfumeName.trim();
+    if (trimmedName) {
+      // NEW: Check for duplicate name (case-insensitive)
+      const isDuplicate = perfumes.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
+      
+      if (isDuplicate) {
+        setNameError('A formula with this name already exists.');
+        return;
+      }
+
       setIsNameModalOpen(false);
-      onCreate(newPerfumeName.trim(), creationMode); // Pass the mode here
+      onCreate(trimmedName, creationMode);
       setNewPerfumeName('');
-      setCreationMode('lab'); // Reset
+      setCreationMode('lab');
     }
   };
 
   const handleDownloadExcel = async () => {
+    // ... (Keep existing handleDownloadExcel logic exactly the same)
     try {
       const response = await axios.get('https://perfume-one-black.vercel.app/api/export/perfumes', {
         responseType: 'blob'
       });
-      
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -39,8 +51,8 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
 
   return (
     <div className="p-4 sm:p-8">
+      {/* ... (Keep existing header and grid/list rendering exactly the same) ... */}
       <div className="max-w-6xl mx-auto">
-        
         <header className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
           <div className="w-full md:w-auto">
             <h1 className="text-2xl sm:text-3xl font-bold">Perfume Formulas</h1>
@@ -49,61 +61,27 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
           
           <div className="flex flex-col w-full md:w-auto gap-3 md:items-end">
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <button 
-                onClick={onChangePassword}
-                className="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
-              >
-                <Lock size={18} />
-                <span>Change Password</span>
+              <button onClick={onChangePassword} className="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
+                <Lock size={18} /><span>Change Password</span>
               </button>
-
-              <button 
-                onClick={handleDownloadExcel}
-                className="w-full sm:w-auto bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
-              >
-                <Download size={18} />
-                <span>Export</span>
+              <button onClick={handleDownloadExcel} className="w-full sm:w-auto bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
+                <Download size={18} /><span>Export</span>
               </button>
-
-              <button 
-                onClick={onLogout}
-                className="w-full sm:w-auto bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors border border-red-200 dark:border-red-800 text-sm sm:text-base shadow-sm"
-              >
-                <LogOut size={18} />
-                <span>Logout</span>
+              <button onClick={onLogout} className="w-full sm:w-auto bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors border border-red-200 dark:border-red-800 text-sm sm:text-base shadow-sm">
+                <LogOut size={18} /><span>Logout</span>
               </button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto items-stretch sm:items-center">
               <div className="flex w-full sm:w-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 transition-colors shadow-sm">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                >
-                  <Grid size={18} />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                >
-                  <List size={18} />
-                </button>
+                <button onClick={() => setViewMode('grid')} className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}><Grid size={18} /></button>
+                <button onClick={() => setViewMode('list')} className={`flex-1 flex justify-center p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}><List size={18} /></button>
               </div>
-
-              <button 
-                onClick={onManageIngredients}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
-              >
-                <Beaker size={18} />
-                <span>Ingredients</span>
+              <button onClick={onManageIngredients} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
+                <Beaker size={18} /><span>Ingredients</span>
               </button>
-              
-              <button 
-                onClick={() => setIsNameModalOpen(true)}
-                className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm"
-              >
-                <Plus size={18} />
-                <span>New Formula</span>
+              <button onClick={() => { setIsNameModalOpen(true); setNameError(''); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
+                <Plus size={18} /><span>New Formula</span>
               </button>
             </div>
           </div>
@@ -126,66 +104,30 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
                       </span>
                     </div>
                     <div className="mt-4 space-y-2">
-                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
-                        <span className="font-medium">Total Batch:</span> 
-                        <span>{perfume.totalVolume}ml</span>
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between">
-                        <span className="font-medium">Ingredients:</span> 
-                        <span>{perfume.formula.length}</span>
-                      </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        Last edited: {perfume.lastModified}
-                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between"><span className="font-medium">Total Batch:</span> <span>{perfume.totalVolume}ml</span></p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 flex justify-between"><span className="font-medium">Ingredients:</span> <span>{perfume.formula.length}</span></p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">Last edited: {perfume.lastModified}</p>
                     </div>
                   </div>
-
                   <div className="flex gap-2 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <button 
-                      onClick={() => onEdit(perfume)}
-                      className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"
-                    >
-                      <Edit size={16} /> Edit
-                    </button>
-                    <button 
-                      onClick={() => onDelete(perfume._id)}
-                      className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} /> Delete
-                    </button>
+                    <button onClick={() => onEdit(perfume)} className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-colors"><Edit size={16} /> Edit</button>
+                    <button onClick={() => onDelete(perfume._id)} className="flex-1 flex justify-center items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"><Trash2 size={16} /> Delete</button>
                   </div>
                 </div>
               ) : (
                 <div key={perfume._id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:shadow-sm transition-all">
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 w-full">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-[150px]">{perfume.name}</h3>
-                    
                     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">
-                        Rs {perfume.pricePer50ml.toFixed(2)}
-                      </span>
-                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
-                      <span>{perfume.totalVolume}ml</span>
-                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
-                      <span>{perfume.formula.length} parts</span>
-                      <span className="hidden md:inline text-gray-300 dark:text-gray-600">•</span>
-                      <span className="hidden md:inline text-xs text-gray-400">{perfume.lastModified}</span>
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">Rs {perfume.pricePer50ml.toFixed(2)}</span>
+                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span><span>{perfume.totalVolume}ml</span>
+                      <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span><span>{perfume.formula.length} parts</span>
+                      <span className="hidden md:inline text-gray-300 dark:text-gray-600">•</span><span className="hidden md:inline text-xs text-gray-400">{perfume.lastModified}</span>
                     </div>
                   </div>
-
                   <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0 border-t sm:border-0 border-gray-100 dark:border-gray-700 pt-3 sm:pt-0">
-                    <button 
-                      onClick={() => onEdit(perfume)}
-                      className="flex-1 sm:flex-none p-2 sm:px-3 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex justify-center items-center"
-                    >
-                      <Edit size={18} />
-                    </button>
-                    <button 
-                      onClick={() => onDelete(perfume._id)}
-                      className="flex-1 sm:flex-none p-2 sm:px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex justify-center items-center"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <button onClick={() => onEdit(perfume)} className="flex-1 sm:flex-none p-2 sm:px-3 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex justify-center items-center"><Edit size={18} /></button>
+                    <button onClick={() => onDelete(perfume._id)} className="flex-1 sm:flex-none p-2 sm:px-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex justify-center items-center"><Trash2 size={18} /></button>
                   </div>
                 </div>
               )
@@ -204,6 +146,15 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
               </button>
             </div>
             <form onSubmit={handleCreateSubmit}>
+              
+              {/* NEW: Error Display */}
+              {nameError && (
+                <div className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <p>{nameError}</p>
+                </div>
+              )}
+
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Perfume Name</label>
                 <input
@@ -212,7 +163,7 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
                   required
                   placeholder="e.g. Summer Breeze"
                   value={newPerfumeName}
-                  onChange={(e) => setNewPerfumeName(e.target.value)}
+                  onChange={(e) => { setNewPerfumeName(e.target.value); setNameError(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
                 />
               </div>

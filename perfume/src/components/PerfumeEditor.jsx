@@ -1,12 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, History } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, History, AlertCircle, Copy, X } from 'lucide-react';
 
-const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) => {
+const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngredient }) => {
   const [formula, setFormula] = useState(perfume?.formula || []);
   const [additionLog, setAdditionLog] = useState([]);
-  
   const [selectedIngredient, setSelectedIngredient] = useState('');
   const [amountToAdd, setAmountToAdd] = useState('');
+  const [errorMsg, setErrorMsg] = useState(''); 
+  
+  // NEW: Save As New Modal States
+  const [isSaveAsNewModalOpen, setIsSaveAsNewModalOpen] = useState(false);
+  const [newPerfumeName, setNewPerfumeName] = useState('');
+  const [modalErrorMsg, setModalErrorMsg] = useState('');
 
   const totalVolume = useMemo(() => {
     return formula.reduce((sum, item) => sum + item.amount, 0);
@@ -20,8 +25,57 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
     }, 0);
   }, [formula, totalVolume]);
 
+  // NEW: Detect if any edits were actually made
+  const hasChanges = useMemo(() => {
+    if (!perfume || !perfume.formula) return true;
+    if (perfume.formula.length !== formula.length) return true;
+
+    // Sort both arrays by ID to safely compare their contents
+    const orig = [...perfume.formula].sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
+    const curr = [...formula].sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
+
+    for (let i = 0; i < orig.length; i++) {
+      if (orig[i].ingredientId !== curr[i].ingredientId) return true;
+      if (orig[i].amount !== curr[i].amount) return true;
+    }
+    return false;
+  }, [formula, perfume]);
+
+  // UPDATED: Duplication check now accepts a flag to know if we are saving as new
+  const checkDuplicateFormula = (checkingAsNew = false) => {
+    if (formula.length === 0 || totalVolume === 0) return false;
+
+    const currentSignature = [...formula]
+      .map(item => ({
+        id: item.ingredientId,
+        pct: ((item.amount / totalVolume) * 100).toFixed(2)
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    
+    const currentSigString = JSON.stringify(currentSignature);
+
+    for (const p of perfumes) {
+      // If updating, ignore itself. If saving as new, check against everything.
+      if (!checkingAsNew && p._id === perfume._id) continue;
+      if (p.totalVolume === 0 || p.formula.length === 0) continue;
+
+      const compareSignature = [...p.formula]
+        .map(item => ({
+          id: item.ingredientId,
+          pct: ((item.amount / p.totalVolume) * 100).toFixed(2)
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+      if (currentSigString === JSON.stringify(compareSignature)) {
+        return p.name;
+      }
+    }
+    return false;
+  };
+
   const handleAddAmount = (e) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!selectedIngredient || !amountToAdd || isNaN(amountToAdd) || Number(amountToAdd) <= 0) return;
 
     const ingredientData = inventory.find(inv => inv.id === selectedIngredient);
@@ -57,9 +111,17 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
 
   const handleRemoveIngredient = (ingredientId) => {
     setFormula(prev => prev.filter(item => item.ingredientId !== ingredientId));
+    setErrorMsg('');
   };
 
-  const handleSaveClick = () => {
+  // Standard Update Save
+  const handleUpdateClick = () => {
+    const duplicateName = checkDuplicateFormula(false);
+    if (duplicateName) {
+      setErrorMsg(`Cannot update! This exact percentage breakdown already exists in: "${duplicateName}".`);
+      return; 
+    }
+
     onSave({
       _id: perfume._id,
       name: perfume.name,
@@ -67,6 +129,39 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
       totalVolume,
       pricePer50ml: finalPricePer50ml
     });
+  };
+
+  // NEW: Save As New Submit Handler
+  const handleSaveAsNewSubmit = (e) => {
+    e.preventDefault();
+    setModalErrorMsg('');
+
+    const trimmedName = newPerfumeName.trim();
+    if (trimmedName) {
+      // 1. Check for Duplicate Name
+      const isDuplicateName = perfumes.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
+      if (isDuplicateName) {
+        setModalErrorMsg('A formula with this name already exists.');
+        return;
+      }
+
+      // 2. Check for Duplicate Percentage Formula (treating it as a new entity)
+      const duplicateFormulaName = checkDuplicateFormula(true);
+      if (duplicateFormulaName) {
+        setModalErrorMsg(`Cannot save! This exact percentage breakdown already exists in: "${duplicateFormulaName}".`);
+        return;
+      }
+
+      // 3. Save as New (Passing _id: null triggers a new DB entry in App.jsx)
+      onSave({
+        _id: null,
+        name: trimmedName,
+        formula,
+        totalVolume,
+        pricePer50ml: finalPricePer50ml
+      });
+      setIsSaveAsNewModalOpen(false);
+    }
   };
 
   return (
@@ -78,24 +173,42 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
           </button>
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{perfume?.name}</h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Editing Formula</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Editing Formula</p>
+              {hasChanges && <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">UNSAVED CHANGES</span>}
+            </div>
           </div>
         </div>
         
-        <div className="flex items-center justify-between w-full md:w-auto gap-4 sm:gap-6 border-t md:border-0 border-gray-100 dark:border-gray-700 pt-4 md:pt-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full md:w-auto gap-4 sm:gap-6 border-t md:border-0 border-gray-100 dark:border-gray-700 pt-4 md:pt-0">
           <div className="text-left md:text-right">
             <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Final Cost / 50ml</p>
             <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Rs {finalPricePer50ml.toFixed(2)}</p>
           </div>
-          <button 
-            onClick={handleSaveClick}
-            disabled={formula.length === 0}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
-          >
-            <Save size={20} />
-            <span className="hidden sm:inline">Update Perfume</span>
-            <span className="sm:hidden">Update</span>
-          </button>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            {/* NEW: Save As New Button */}
+            <button 
+              onClick={() => { setIsSaveAsNewModalOpen(true); setModalErrorMsg(''); setNewPerfumeName(''); }}
+              disabled={!hasChanges || formula.length === 0}
+              className="flex-1 sm:flex-none bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 disabled:opacity-50 disabled:cursor-not-allowed px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors whitespace-nowrap"
+            >
+              <Copy size={18} />
+              <span className="hidden sm:inline">Save as New</span>
+              <span className="sm:hidden">As New</span>
+            </button>
+
+            {/* UPDATED: Normal Save Button */}
+            <button 
+              onClick={handleUpdateClick}
+              disabled={!hasChanges || formula.length === 0}
+              className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors whitespace-nowrap"
+            >
+              <Save size={20} />
+              <span className="hidden sm:inline">Update</span>
+              <span className="sm:hidden">Update</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -114,7 +227,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Ingredient</label>
                 <select 
                   value={selectedIngredient}
-                  onChange={(e) => setSelectedIngredient(e.target.value)}
+                  onChange={(e) => { setSelectedIngredient(e.target.value); setErrorMsg(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors appearance-none"
                 >
                   <option value="">-- Choose --</option>
@@ -132,11 +245,19 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                   step="0.01"
                   min="0.01"
                   value={amountToAdd}
-                  onChange={(e) => setAmountToAdd(e.target.value)}
+                  onChange={(e) => { setAmountToAdd(e.target.value); setErrorMsg(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
                   placeholder="e.g. 2.5"
                 />
               </div>
+
+              {errorMsg && (
+                <div className="flex items-start gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <p>{errorMsg}</p>
+                </div>
+              )}
+
               <button 
                 type="submit"
                 disabled={!selectedIngredient || !amountToAdd}
@@ -170,7 +291,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
           <div className="p-5 sm:p-6 pb-4 sm:pb-6 flex justify-between items-end border-b border-gray-100 dark:border-gray-700">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Final Formula</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume}</span></p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume} ml</span></p>
             </div>
           </div>
 
@@ -200,7 +321,7 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
                     return (
                       <tr key={item.ingredientId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td className="py-3 px-4 sm:px-6 font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">{item.name}</td>
-                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">{item.amount.toFixed(2)}</td>
+                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">{item.amount.toFixed(2)} ml</td>
                         <td className="py-3 px-4 sm:px-6">
                           <div className="flex items-center gap-2">
                             <span className="w-10 sm:w-12 text-gray-900 dark:text-gray-100 font-medium text-xs sm:text-sm">{percentage.toFixed(1)}%</span>
@@ -227,6 +348,60 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
           </div>
         </div>
       </div>
+
+      {/* NEW: Save As New Modal */}
+      {isSaveAsNewModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 transition-colors shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Save as New Formula</h2>
+              <button onClick={() => setIsSaveAsNewModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveAsNewSubmit}>
+              {modalErrorMsg && (
+                <div className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg flex items-start gap-2">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <p>{modalErrorMsg}</p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">New Perfume Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  placeholder="e.g. Summer Breeze V2"
+                  value={newPerfumeName}
+                  onChange={(e) => { setNewPerfumeName(e.target.value); setModalErrorMsg(''); }}
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsSaveAsNewModalOpen(false)}
+                  className="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={!newPerfumeName.trim()}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 dark:disabled:bg-emerald-800/50 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Save as New
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
