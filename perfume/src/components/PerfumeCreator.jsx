@@ -1,13 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, History } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, History, AlertCircle } from 'lucide-react';
 
-const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredient }) => {
-  // Always starts with an empty formula for a new creation
+const PerfumeCreator = ({ perfumeName, mode, inventory, onBack, onSave, onAddIngredient }) => {
   const [formula, setFormula] = useState([]);
   const [additionLog, setAdditionLog] = useState([]);
-  
   const [selectedIngredient, setSelectedIngredient] = useState('');
   const [amountToAdd, setAmountToAdd] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const totalVolume = useMemo(() => {
     return formula.reduce((sum, item) => sum + item.amount, 0);
@@ -23,15 +22,28 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
 
   const handleAddAmount = (e) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!selectedIngredient || !amountToAdd || isNaN(amountToAdd) || Number(amountToAdd) <= 0) return;
 
     const ingredientData = inventory.find(inv => inv.id === selectedIngredient);
     const amountNum = parseFloat(amountToAdd);
 
+    // FORMULA MODE VALIDATION (Max 100)
+    if (mode === 'formula') {
+      const existingItem = formula.find(item => item.ingredientId === selectedIngredient);
+      const currentTotalWithoutThis = existingItem ? totalVolume - existingItem.amount : totalVolume;
+      
+      if (currentTotalWithoutThis + amountNum > 100) {
+        setErrorMsg(`Cannot add ${amountNum}%. Only ${(100 - currentTotalWithoutThis).toFixed(2)}% space remaining.`);
+        return;
+      }
+    }
+
     setAdditionLog(prev => [{
       id: Date.now(),
       name: ingredientData.name,
       amount: amountNum,
+      modeLog: mode === 'formula' ? 'set to' : '+',
       time: new Date().toLocaleTimeString()
     }, ...prev]);
 
@@ -40,7 +52,7 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
       if (existing) {
         return prevFormula.map(item => 
           item.ingredientId === selectedIngredient 
-            ? { ...item, amount: item.amount + amountNum }
+            ? { ...item, amount: mode === 'formula' ? amountNum : item.amount + amountNum } // Replace in Formula mode, Add in Lab mode
             : item
         );
       } else {
@@ -58,17 +70,21 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
 
   const handleRemoveIngredient = (ingredientId) => {
     setFormula(prev => prev.filter(item => item.ingredientId !== ingredientId));
+    setErrorMsg('');
   };
 
   const handleSaveClick = () => {
     onSave({
-      _id: null, // Always null for creation
+      _id: null,
       name: perfumeName,
       formula,
       totalVolume,
       pricePer50ml: finalPricePer50ml
     });
   };
+
+  // Determine if Save button should be disabled based on mode
+  const isSaveDisabled = mode === 'formula' ? totalVolume !== 100 : formula.length === 0;
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col min-h-screen">
@@ -78,19 +94,37 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
             <ArrowLeft size={20} />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{perfumeName}</h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">New Formula</p>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{perfumeName}</h1>
+              <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400 text-xs font-semibold px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 whitespace-nowrap">
+                {mode === 'formula' ? 'Formula Mode' : 'Lab Mode'}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">New Formula</p>
           </div>
         </div>
         
         <div className="flex items-center justify-between w-full md:w-auto gap-4 sm:gap-6 border-t md:border-0 border-gray-100 dark:border-gray-700 pt-4 md:pt-0">
-          <div className="text-left md:text-right">
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Final Cost / 50ml</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Rs {finalPricePer50ml.toFixed(2)}</p>
-          </div>
+          
+          {/* Dynamic Header Display based on mode */}
+          {mode === 'formula' ? (
+            <div className="text-left md:text-right">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Formula Completion</p>
+              <p className={`text-xl sm:text-2xl font-bold ${totalVolume === 100 ? 'text-green-600 dark:text-green-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                {totalVolume.toFixed(1)}% / 100%
+              </p>
+            </div>
+          ) : (
+            <div className="text-left md:text-right">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Final Cost / 50ml</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Rs {finalPricePer50ml.toFixed(2)}</p>
+            </div>
+          )}
+
           <button 
             onClick={handleSaveClick}
-            disabled={formula.length === 0}
+            disabled={isSaveDisabled}
+            title={mode === 'formula' && totalVolume !== 100 ? "Formula must be exactly 100%" : ""}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
           >
             <Save size={20} />
@@ -115,7 +149,7 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Ingredient</label>
                 <select 
                   value={selectedIngredient}
-                  onChange={(e) => setSelectedIngredient(e.target.value)}
+                  onChange={(e) => { setSelectedIngredient(e.target.value); setErrorMsg(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors appearance-none"
                 >
                   <option value="">-- Choose --</option>
@@ -127,30 +161,40 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount to Add (ml)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {mode === 'formula' ? 'Percentage (%)' : 'Amount to Add (ml)'}
+                </label>
                 <input 
                   type="number" 
                   step="0.01"
                   min="0.01"
                   value={amountToAdd}
-                  onChange={(e) => setAmountToAdd(e.target.value)}
+                  onChange={(e) => { setAmountToAdd(e.target.value); setErrorMsg(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors"
-                  placeholder="e.g. 2.5"
+                  placeholder={mode === 'formula' ? 'e.g. 15' : 'e.g. 2.5'}
                 />
               </div>
+
+              {errorMsg && (
+                <div className="flex items-start gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <p>{errorMsg}</p>
+                </div>
+              )}
+
               <button 
                 type="submit"
-                disabled={!selectedIngredient || !amountToAdd}
+                disabled={!selectedIngredient || !amountToAdd || (mode === 'formula' && totalVolume === 100 && !formula.find(f => f.ingredientId === selectedIngredient))}
                 className="w-full bg-gray-900 dark:bg-gray-700 hover:bg-black dark:hover:bg-gray-600 disabled:bg-gray-300 dark:disabled:bg-gray-800 text-white font-medium py-3 rounded-lg flex justify-center items-center gap-2 transition-colors"
               >
-                <Plus size={20} /> Add to Mix
+                <Plus size={20} /> {mode === 'formula' ? 'Set Percentage' : 'Add to Mix'}
               </button>
             </form>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col h-64 lg:flex-1 transition-colors">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-              <History size={18} /> Addition Log
+              <History size={18} /> Activity Log
             </h2>
             <div className="overflow-y-auto pr-2 space-y-3 flex-1">
               {additionLog.length === 0 ? (
@@ -159,7 +203,9 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
                 additionLog.map(log => (
                   <div key={log.id} className="flex justify-between items-center text-sm border-b border-gray-50 dark:border-gray-700 pb-2">
                     <span className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{log.time}</span>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">+{log.amount} {log.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                      {log.modeLog === 'set to' ? `${log.name} set to ${log.amount}%` : `+${log.amount} ${log.name}`}
+                    </span>
                   </div>
                 ))
               )}
@@ -169,9 +215,22 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
 
         <div className="w-full lg:w-2/3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden transition-colors">
           <div className="p-5 sm:p-6 pb-4 sm:pb-6 flex justify-between items-end border-b border-gray-100 dark:border-gray-700">
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Final Formula</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume}</span></p>
+            <div className="w-full">
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Final Formula</h2>
+                {mode === 'lab' && (
+                  <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume} ml</span></p>
+                )}
+              </div>
+              
+              {mode === 'formula' && (
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mt-2 overflow-hidden">
+                  <div 
+                    className={`h-2.5 rounded-full transition-all duration-300 ${totalVolume === 100 ? 'bg-green-500' : 'bg-indigo-500'}`} 
+                    style={{ width: `${Math.min(totalVolume, 100)}%` }}
+                  ></div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -180,8 +239,12 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Ingredient</th>
-                  <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Amount</th>
-                  <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Percentage</th>
+                  <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
+                    {mode === 'formula' ? 'Percentage' : 'Amount'}
+                  </th>
+                  {mode === 'lab' && (
+                    <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Percentage</th>
+                  )}
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Cost Share</th>
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm w-12"></th>
                 </tr>
@@ -189,27 +252,33 @@ const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredien
               <tbody>
                 {formula.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="text-center py-12 text-gray-400 dark:text-gray-500 px-4">
+                    <td colSpan={mode === 'lab' ? "5" : "4"} className="text-center py-12 text-gray-400 dark:text-gray-500 px-4">
                       Start adding ingredients to see the breakdown.
                     </td>
                   </tr>
                 ) : (
                   formula.sort((a, b) => b.amount - a.amount).map(item => {
-                    const percentage = (item.amount / totalVolume) * 100;
-                    const costContribution = (item.amount / totalVolume) * item.pricePer50ml;
+                    const percentage = totalVolume === 0 ? 0 : (item.amount / totalVolume) * 100;
+                    const costContribution = mode === 'formula' ? item.amount * (item.pricePer50ml / 50) : (item.amount / totalVolume) * item.pricePer50ml;
                     
                     return (
                       <tr key={item.ingredientId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td className="py-3 px-4 sm:px-6 font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">{item.name}</td>
-                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">{item.amount.toFixed(2)}</td>
-                        <td className="py-3 px-4 sm:px-6">
-                          <div className="flex items-center gap-2">
-                            <span className="w-10 sm:w-12 text-gray-900 dark:text-gray-100 font-medium text-xs sm:text-sm">{percentage.toFixed(1)}%</span>
-                            <div className="w-16 sm:w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 sm:h-2 hidden xs:block">
-                              <div className="bg-indigo-500 dark:bg-indigo-400 h-1.5 sm:h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
-                            </div>
-                          </div>
+                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">
+                          {item.amount.toFixed(2)}{mode === 'formula' ? '%' : ' ml'}
                         </td>
+                        
+                        {mode === 'lab' && (
+                          <td className="py-3 px-4 sm:px-6">
+                            <div className="flex items-center gap-2">
+                              <span className="w-10 sm:w-12 text-gray-900 dark:text-gray-100 font-medium text-xs sm:text-sm">{percentage.toFixed(1)}%</span>
+                              <div className="w-16 sm:w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-1.5 sm:h-2 hidden xs:block">
+                                <div className="bg-indigo-500 dark:bg-indigo-400 h-1.5 sm:h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                        )}
+
                         <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">Rs {costContribution.toFixed(2)}</td>
                         <td className="py-3 px-4 sm:px-6 text-right">
                           <button 

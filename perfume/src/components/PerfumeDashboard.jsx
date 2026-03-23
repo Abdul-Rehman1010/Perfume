@@ -2,18 +2,19 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut } from 'lucide-react';
 
-// Added onCreate to props
 const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
+  const [creationMode, setCreationMode] = useState('lab'); // NEW: Modal state for mode
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
     if (newPerfumeName.trim()) {
       setIsNameModalOpen(false);
-      onCreate(newPerfumeName.trim()); // Call onCreate instead of onEdit
+      onCreate(newPerfumeName.trim(), creationMode); // Pass the mode here
       setNewPerfumeName('');
+      setCreationMode('lab'); // Reset
     }
   };
 
@@ -41,14 +42,12 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
       <div className="max-w-6xl mx-auto">
         
         <header className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
-          
           <div className="w-full md:w-auto">
             <h1 className="text-2xl sm:text-3xl font-bold">Perfume Formulas</h1>
             <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1">Manage your ingredient breakdowns and costs</p>
           </div>
           
           <div className="flex flex-col w-full md:w-auto gap-3 md:items-end">
-            
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <button 
                 onClick={onChangePassword}
@@ -107,7 +106,6 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
                 <span>New Formula</span>
               </button>
             </div>
-
           </div>
         </header>
 
@@ -200,20 +198,41 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 transition-colors">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Name Your Perfume</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Start New Formula</h2>
               <button onClick={() => setIsNameModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleCreateSubmit}>
-              <input
-                type="text"
-                autoFocus
-                placeholder="e.g. Summer Breeze"
-                value={newPerfumeName}
-                onChange={(e) => setNewPerfumeName(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 mb-6 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
-              />
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Perfume Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  placeholder="e.g. Summer Breeze"
+                  value={newPerfumeName}
+                  onChange={(e) => setNewPerfumeName(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Creation Style</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className={`border rounded-lg p-3 cursor-pointer transition-all ${creationMode === 'lab' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <input type="radio" className="hidden" name="mode" value="lab" checked={creationMode === 'lab'} onChange={() => setCreationMode('lab')} />
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">Lab Mode</div>
+                    <div className="text-xs text-gray-500 mt-1">Freeform (Add drops in ml)</div>
+                  </label>
+                  <label className={`border rounded-lg p-3 cursor-pointer transition-all ${creationMode === 'formula' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <input type="radio" className="hidden" name="mode" value="formula" checked={creationMode === 'formula'} onChange={() => setCreationMode('formula')} />
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">Formula Mode</div>
+                    <div className="text-xs text-gray-500 mt-1">Strict (100% total limit)</div>
+                  </label>
+                </div>
+              </div>
+
               <button 
                 type="submit"
                 disabled={!newPerfumeName.trim()}

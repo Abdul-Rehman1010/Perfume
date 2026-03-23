@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PerfumeDashboard from './components/PerfumeDashboard';
 import PerfumeEditor from './components/PerfumeEditor';
-import PerfumeCreator from './components/PerfumeCreator'; // Import new component
+import PerfumeCreator from './components/PerfumeCreator';
 import IngredientsDashboard from './components/IngredientsDashboard';
 import IngredientModal from './components/IngredientModal';
 import PasswordModal from './components/PasswordModal';
@@ -14,7 +14,8 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
   const [activePerfume, setActivePerfume] = useState(null);
-  const [creatorPerfumeName, setCreatorPerfumeName] = useState(''); // Added state for creator name
+  const [creatorPerfumeName, setCreatorPerfumeName] = useState('');
+  const [creatorMode, setCreatorMode] = useState('lab');
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
@@ -55,8 +56,9 @@ function App() {
     setCurrentView('editor');
   };
 
-  const navigateToCreator = (perfumeName) => {
+  const navigateToCreator = (perfumeName, mode) => {
     setCreatorPerfumeName(perfumeName);
+    setCreatorMode(mode);
     setCurrentView('creator');
   };
 
@@ -86,32 +88,35 @@ function App() {
         const res = await axios.put(`${API_URL}/ingredients/${ingredientData.id}`, ingredientData);
         const updatedIng = res.data;
         
-        setInventory(inventory.map(inv => inv.id === updatedIng.id ? updatedIng : inv));
+        // Use prev state to avoid stale closures
+        setInventory(prev => prev.map(inv => inv.id === updatedIng.id ? updatedIng : inv));
         
-        const updatedPerfumes = perfumes.map(perfume => {
-          const updatedFormula = perfume.formula.map(item => 
-            item.ingredientId === updatedIng.id 
-              ? { ...item, name: updatedIng.name, pricePer50ml: updatedIng.pricePer50ml }
-              : item
-          );
+        setPerfumes(prevPerfumes => {
+          const updatedPerfumes = prevPerfumes.map(perfume => {
+            const updatedFormula = perfume.formula.map(item => 
+              item.ingredientId === updatedIng.id 
+                ? { ...item, name: updatedIng.name, pricePer50ml: updatedIng.pricePer50ml }
+                : item
+            );
+            
+            const newTotalPrice = updatedFormula.reduce((total, item) => {
+              const percentage = item.amount / perfume.totalVolume;
+              return total + (percentage * updatedIng.pricePer50ml);
+            }, 0);
+
+            return { ...perfume, formula: updatedFormula, pricePer50ml: newTotalPrice };
+          });
           
-          const newTotalPrice = updatedFormula.reduce((total, item) => {
-            const percentage = item.amount / perfume.totalVolume;
-            return total + (percentage * updatedIng.pricePer50ml);
-          }, 0);
+          updatedPerfumes.forEach(async (perfume) => {
+            await axios.put(`${API_URL}/perfumes/${perfume._id}`, perfume);
+          });
 
-          return { ...perfume, formula: updatedFormula, pricePer50ml: newTotalPrice };
-        });
-
-        setPerfumes(updatedPerfumes);
-        
-        updatedPerfumes.forEach(async (perfume) => {
-          await axios.put(`${API_URL}/perfumes/${perfume._id}`, perfume);
+          return updatedPerfumes;
         });
 
       } else {
         const res = await axios.post(`${API_URL}/ingredients`, ingredientData);
-        setInventory([...inventory, res.data]);
+        setInventory(prev => [...prev, res.data]);
       }
       setIsIngredientModalOpen(false);
     } catch (error) {
@@ -132,7 +137,7 @@ function App() {
     if (window.confirm('Are you sure you want to delete this ingredient?')) {
       try {
         await axios.delete(`${API_URL}/ingredients/${id}`);
-        setInventory(inventory.filter(inv => inv.id !== id));
+        setInventory(prev => prev.filter(inv => inv.id !== id));
       } catch (error) {
         console.error(error);
       }
@@ -141,15 +146,23 @@ function App() {
 
   const handleSavePerfume = async (perfumeData) => {
     const currentDate = new Date().toISOString().split('T')[0];
-    const dataToSave = { ...perfumeData, lastModified: currentDate };
+    
+    // FIX: Destructure out _id so we don't accidentally send `_id: null` to the backend.
+    // This allows Mongoose to properly generate and return the real database ID.
+    const { _id, ...restData } = perfumeData;
+    const dataToSave = { ...restData, lastModified: currentDate };
     
     try {
-      if (perfumeData._id) {
-        const res = await axios.put(`${API_URL}/perfumes/${perfumeData._id}`, dataToSave);
-        setPerfumes(perfumes.map(p => p._id === perfumeData._id ? res.data : p));
+      if (_id) {
+        // We are updating an existing perfume
+        const res = await axios.put(`${API_URL}/perfumes/${_id}`, { ...dataToSave, _id });
+        // Use prev state to ensure we always update the latest version of the array
+        setPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
       } else {
+        // We are creating a brand new perfume
         const res = await axios.post(`${API_URL}/perfumes`, dataToSave);
-        setPerfumes([...perfumes, res.data]);
+        // Use prev state to append the newly generated data (which now includes the real _id)
+        setPerfumes(prev => [...prev, res.data]);
       }
       navigateToDashboard();
     } catch (error) {
@@ -161,7 +174,8 @@ function App() {
     if (window.confirm('Are you sure you want to delete this formula?')) {
       try {
         await axios.delete(`${API_URL}/perfumes/${id}`);
-        setPerfumes(perfumes.filter(perfume => perfume._id !== id));
+        // Use prev state to safely remove the item
+        setPerfumes(prev => prev.filter(perfume => perfume._id !== id));
       } catch (error) {
         console.error(error);
       }
@@ -177,7 +191,7 @@ function App() {
       {currentView === 'dashboard' && (
         <PerfumeDashboard 
           perfumes={perfumes}
-          onCreate={navigateToCreator} // Pass onCreate prop
+          onCreate={navigateToCreator} 
           onEdit={navigateToEditor} 
           onDelete={handleDeletePerfume}
           onManageIngredients={navigateToIngredients}
@@ -189,6 +203,7 @@ function App() {
       {currentView === 'creator' && (
         <PerfumeCreator 
           perfumeName={creatorPerfumeName} 
+          mode={creatorMode} 
           inventory={inventory}
           onBack={navigateToDashboard} 
           onSave={handleSavePerfume}
