@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut } from 'lucide-react';
 
-const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
+// Added onCreate to props
+const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
@@ -11,13 +12,7 @@ const PerfumeDashboard = ({ perfumes, onEdit, onDelete, onManageIngredients, onC
     e.preventDefault();
     if (newPerfumeName.trim()) {
       setIsNameModalOpen(false);
-      onEdit({ 
-        _id: null, 
-        name: newPerfumeName.trim(), 
-        formula: [],
-        totalVolume: 0,
-        pricePer50ml: 0
-      });
+      onCreate(newPerfumeName.trim()); // Call onCreate instead of onEdit
       setNewPerfumeName('');
     }
   };

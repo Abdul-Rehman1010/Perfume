@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Save, Plus, Trash2, History } from 'lucide-react';
 
-const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) => {
-  const [formula, setFormula] = useState(perfume?.formula || []);
+const PerfumeCreator = ({ perfumeName, inventory, onBack, onSave, onAddIngredient }) => {
+  // Always starts with an empty formula for a new creation
+  const [formula, setFormula] = useState([]);
   const [additionLog, setAdditionLog] = useState([]);
   
   const [selectedIngredient, setSelectedIngredient] = useState('');
@@ -61,8 +62,8 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
 
   const handleSaveClick = () => {
     onSave({
-      _id: perfume._id,
-      name: perfume.name,
+      _id: null, // Always null for creation
+      name: perfumeName,
       formula,
       totalVolume,
       pricePer50ml: finalPricePer50ml
@@ -77,8 +78,8 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
             <ArrowLeft size={20} />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{perfume?.name}</h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Editing Formula</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{perfumeName}</h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">New Formula</p>
           </div>
         </div>
         
@@ -93,8 +94,8 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
           >
             <Save size={20} />
-            <span className="hidden sm:inline">Update Perfume</span>
-            <span className="sm:hidden">Update</span>
+            <span className="hidden sm:inline">Create Perfume</span>
+            <span className="sm:hidden">Create</span>
           </button>
         </div>
       </header>
@@ -231,4 +232,4 @@ const PerfumeEditor = ({ perfume, inventory, onBack, onSave, onAddIngredient }) 
   );
 };
 
-export default PerfumeEditor;
+export default PerfumeCreator;

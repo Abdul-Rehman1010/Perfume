@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import PerfumeDashboard from './components/PerfumeDashboard';
 import PerfumeEditor from './components/PerfumeEditor';
+import PerfumeCreator from './components/PerfumeCreator'; // Import new component
 import IngredientsDashboard from './components/IngredientsDashboard';
 import IngredientModal from './components/IngredientModal';
 import PasswordModal from './components/PasswordModal';
@@ -13,6 +14,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
   const [activePerfume, setActivePerfume] = useState(null);
+  const [creatorPerfumeName, setCreatorPerfumeName] = useState(''); // Added state for creator name
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
@@ -53,8 +55,14 @@ function App() {
     setCurrentView('editor');
   };
 
+  const navigateToCreator = (perfumeName) => {
+    setCreatorPerfumeName(perfumeName);
+    setCurrentView('creator');
+  };
+
   const navigateToDashboard = () => {
     setActivePerfume(null);
+    setCreatorPerfumeName('');
     setCurrentView('dashboard');
   };
 
@@ -169,6 +177,7 @@ function App() {
       {currentView === 'dashboard' && (
         <PerfumeDashboard 
           perfumes={perfumes}
+          onCreate={navigateToCreator} // Pass onCreate prop
           onEdit={navigateToEditor} 
           onDelete={handleDeletePerfume}
           onManageIngredients={navigateToIngredients}
@@ -177,6 +186,16 @@ function App() {
         />
       )}
       
+      {currentView === 'creator' && (
+        <PerfumeCreator 
+          perfumeName={creatorPerfumeName} 
+          inventory={inventory}
+          onBack={navigateToDashboard} 
+          onSave={handleSavePerfume}
+          onAddIngredient={openAddIngredientModal}
+        />
+      )}
+
       {currentView === 'editor' && (
         <PerfumeEditor 
           perfume={activePerfume} 
