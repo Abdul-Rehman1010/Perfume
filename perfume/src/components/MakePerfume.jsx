@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ArrowLeft, Save, Undo2, CheckCircle2, AlertCircle, Beaker } from 'lucide-react';
 
-const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false, onBack, onSave }) => {
+// UPDATED: Added batchNumber and batchTag to props
+const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false, batchNumber, batchTag, onBack, onSave }) => {
   const [currentTarget, setCurrentTarget] = useState(existingBatch ? existingBatch.targetVolume : targetVolume);
   const [targetInput, setTargetInput] = useState((existingBatch ? existingBatch.targetVolume : targetVolume).toString());
   
@@ -18,6 +19,11 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
   
   const [historyStack, setHistoryStack] = useState([]);
   const [inputAmounts, setInputAmounts] = useState({});
+
+  // NEW: Construct the display name for the batch
+  const displayTitle = existingBatch 
+    ? existingBatch.formulaName 
+    : (batchTag ? `${formula.name} (Batch #${batchNumber}) - ${batchTag}` : `${formula.name} (Batch #${batchNumber})`);
 
   const displayProgress = useMemo(() => {
     return ingredientsProgress.map(ing => {
@@ -149,7 +155,7 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
     const dataToSave = {
       _id: existingBatch?._id || null,
       formulaId: formula._id,
-      formulaName: formula.name,
+      formulaName: displayTitle, // Save the fully constructed title!
       targetVolume: currentTarget,
       status: status,
       ingredientsLog: displayProgress.map(ing => ({
@@ -175,7 +181,8 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{formula.name}</h1>
+            {/* Display the dynamically constructed title */}
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{displayTitle}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="text-sm text-gray-500 dark:text-gray-400">Target Batch (ml):</span>
               <input
@@ -249,7 +256,6 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
                 const requiredPct = (ing.basePct * 100).toFixed(1);
                 const achievedPct = currentTarget > 0 ? ((ing.loggedAmount / currentTarget) * 100).toFixed(1) : 0;
                 
-                // NEW: Calculate the exact remaining amount needed to reach the target
                 const remainingNeeded = Math.max(0, ing.targetAmount - ing.loggedAmount);
                 
                 return (
@@ -304,7 +310,6 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
                               Add
                             </button>
                           </div>
-                          {/* NEW: Displays the remaining amount to add under the input field */}
                           {!isComplete && (
                             <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
                               Needs {remainingNeeded.toFixed(1)} ml more

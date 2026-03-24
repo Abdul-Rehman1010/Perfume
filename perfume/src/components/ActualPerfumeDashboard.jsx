@@ -1,33 +1,77 @@
 import React, { useState } from 'react';
-import { Beaker, Plus, ArrowRight, CheckCircle2, AlertCircle, Trash2, X } from 'lucide-react';
-import SearchableSelect from './SearchableSelect'; // IMPORT NEW COMPONENT
+import { Beaker, Plus, ArrowRight, CheckCircle2, AlertCircle, Trash2, X, Search, Calendar } from 'lucide-react';
+import SearchableSelect from './SearchableSelect'; 
 
 const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBatch, onDelete, onBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFormulaId, setSelectedFormulaId] = useState('');
   const [targetVolume, setTargetVolume] = useState('');
+  const [batchTag, setBatchTag] = useState(''); 
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (selectedFormulaId && targetVolume) {
       const formula = formulas.find(f => f._id === selectedFormulaId);
-      onNewBatch(formula, parseFloat(targetVolume));
+      onNewBatch(formula, parseFloat(targetVolume), null, false, batchTag.trim());
       setIsModalOpen(false);
       setSelectedFormulaId('');
       setTargetVolume('');
+      setBatchTag('');
     }
   };
 
-  // Convert formulas to the { id, name } structure required by SearchableSelect
   const formulaOptions = formulas.map(f => ({
     id: f._id,
     name: f.name,
     totalVolume: f.totalVolume
   }));
 
+  // NEW: A robust parser that handles both old regional strings and new universal ISO strings
+  const parseSafeDate = (dateStr) => {
+    if (!dateStr) return new Date(0);
+    const d = new Date(dateStr);
+    if (!isNaN(d)) return d; // Successfully parsed standard ISO
+    
+    // Fallback rescue for previously saved DD/MM/YYYY locale strings
+    const parts = dateStr.split(/[\s,]+/);
+    if (parts.length > 0) {
+      const dateParts = parts[0].split('/');
+      if (dateParts.length === 3) {
+        const fallback = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T00:00:00`);
+        if (!isNaN(fallback)) return fallback;
+      }
+    }
+    return new Date(0); // Absolute fallback to prevent crashes
+  };
+
+  const sortedBatches = [...actualPerfumes].sort((a, b) => {
+    return parseSafeDate(b.lastModified) - parseSafeDate(a.lastModified);
+  });
+
+  const filteredBatches = sortedBatches.filter(batch => {
+    const matchesSearch = (batch.formulaName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesDate = true;
+    if (dateFilter) {
+      const batchDate = parseSafeDate(batch.lastModified);
+      // Format the parsed date to perfectly match the HTML calendar YYYY-MM-DD output
+      const yyyy = batchDate.getFullYear();
+      const mm = String(batchDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(batchDate.getDate()).padStart(2, '0');
+      const formattedBatchDate = `${yyyy}-${mm}-${dd}`;
+      
+      matchesDate = formattedBatchDate === dateFilter;
+    }
+
+    return matchesSearch && matchesDate;
+  });
+
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto min-h-screen">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <button onClick={onBack} className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 mb-2 flex items-center gap-1 font-medium">
             ← Back to Formulas
@@ -46,15 +90,50 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
         </button>
       </header>
 
-      {actualPerfumes.length === 0 ? (
+      <div className="mb-8 flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search batches or tags..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-colors shadow-sm"
+          />
+        </div>
+        <div className="relative w-full sm:w-auto">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="date" 
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full sm:w-auto pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-colors shadow-sm cursor-pointer"
+          />
+          {dateFilter && (
+            <button 
+              onClick={() => setDateFilter('')} 
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+              title="Clear date filter"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredBatches.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <Beaker size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">No physical batches recorded yet.</p>
-          <button onClick={() => setIsModalOpen(true)} className="mt-4 text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Start your first batch</button>
+          <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">
+            {actualPerfumes.length === 0 ? "No physical batches recorded yet." : "No batches match your filters."}
+          </p>
+          {actualPerfumes.length === 0 && (
+            <button onClick={() => setIsModalOpen(true)} className="mt-4 text-indigo-600 dark:text-indigo-400 font-medium hover:underline">Start your first batch</button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {actualPerfumes.slice().reverse().map(batch => {
+          {filteredBatches.map(batch => {
             const currentVol = batch.ingredientsLog.reduce((sum, ing) => sum + ing.loggedAmount, 0);
             const percentage = Math.min((currentVol / batch.targetVolume) * 100, 100);
             
@@ -66,11 +145,11 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                     <p className="text-sm text-gray-500 mt-1">Target: {batch.targetVolume} ml</p>
                   </div>
                   {batch.status === 'Completed' ? (
-                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded flex items-center gap-1 h-fit">
                       <CheckCircle2 size={12} /> Done
                     </span>
                   ) : (
-                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                    <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded flex items-center gap-1 h-fit">
                       <AlertCircle size={12} /> In Progress
                     </span>
                   )}
@@ -87,7 +166,10 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-3 text-right">Last saved: {batch.lastModified}</p>
+                  <p className="text-xs text-gray-400 mt-3 text-right">
+                    {/* Translate the ISO string back into a friendly local time for the user */}
+                    Last saved: {!isNaN(new Date(batch.lastModified)) ? new Date(batch.lastModified).toLocaleString() : batch.lastModified}
+                  </p>
                 </div>
 
                 <div className="flex gap-2 pt-4 border-t border-gray-100 dark:border-gray-700 mt-auto">
@@ -130,7 +212,6 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Select Formula</label>
-                {/* NEW SEARCHABLE SELECT IMPLEMENTED HERE */}
                 <SearchableSelect 
                   options={formulaOptions}
                   value={selectedFormulaId}
@@ -140,7 +221,7 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                 />
               </div>
               
-              <div className="mb-8">
+              <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Target Size (ml)</label>
                 <input 
                   type="number" 
@@ -150,6 +231,19 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                   placeholder="e.g. 100"
                   value={targetVolume}
                   onChange={(e) => setTargetVolume(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="mb-8">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Batch Tag <span className="text-gray-400 font-normal">(Optional)</span>
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Client X Order"
+                  value={batchTag}
+                  onChange={(e) => setBatchTag(e.target.value)}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>

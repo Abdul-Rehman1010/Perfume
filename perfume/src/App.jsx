@@ -13,6 +13,10 @@ import LoginPage from './components/LoginPage';
 
 const API_URL = 'https://perfume-one-black.vercel.app/api';
 
+const sortAlphabetically = (array) => {
+  return [...array].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+};
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
@@ -51,9 +55,10 @@ function App() {
             axios.get(`${API_URL}/perfumes`),
             axios.get(`${API_URL}/actual-perfumes`) 
           ]);
-          setInventory(ingredientsRes.data);
-          setPerfumes(perfumesRes.data);
-          setActualPerfumes(actualsRes.data);
+          
+          setInventory(sortAlphabetically(ingredientsRes.data));
+          setPerfumes(sortAlphabetically(perfumesRes.data));
+          setActualPerfumes(actualsRes.data); 
 
           const params = new URLSearchParams(window.location.search);
           const viewParam = params.get('view');
@@ -116,14 +121,40 @@ function App() {
     setIsIngredientModalOpen(true);
   };
 
-  // --- MAKE PERFUME LOGIC ---
-  const handleStartMakePerfume = (formula, targetVolume, existingBatch = null, isReadOnly = false) => {
-    setActiveMakeData({ formula, targetVolume, existingBatch, isReadOnly });
+  // UPDATED: Now accepts batchTag and auto-calculates the batch number
+  // UPDATED: Smart Batch Numbering System
+  const handleStartMakePerfume = (formula, targetVolume, existingBatch = null, isReadOnly = false, batchTag = '') => {
+    let batchNumber = 1;
+    
+    if (!existingBatch) {
+      // 1. Get all existing physical batches for this specific formula
+      const formulaBatches = actualPerfumes.filter(b => b.formulaId === formula._id);
+      
+      // 2. Create a "Set" (a collection of unique numbers) to store used batch numbers
+      const usedNumbers = new Set();
+      
+      // 3. Extract the batch number from the saved names using a Regex pattern
+      formulaBatches.forEach(b => {
+        const match = b.formulaName.match(/\(Batch #(\d+)\)/);
+        if (match && match[1]) {
+          usedNumbers.add(parseInt(match[1], 10));
+        }
+      });
+
+      // 4. Start at 1 and keep counting up until we find a number that isn't used
+      while (usedNumbers.has(batchNumber)) {
+        batchNumber++;
+      }
+    }
+    
+    setActiveMakeData({ formula, targetVolume, existingBatch, isReadOnly, batchNumber, batchTag });
     setCurrentView('makePerfume');
   };
-
+  
   const handleSaveActualPerfume = async (actualData) => {
-    const currentDate = new Date().toLocaleString();
+    // THE FIX: Use an absolute, universal ISO string instead of a regional locale string
+    const currentDate = new Date().toISOString(); 
+    
     const { _id, ...restData } = actualData; 
     const dataToSave = { ...restData, lastModified: currentDate };
     
@@ -153,7 +184,6 @@ function App() {
     }
   };
 
-  // --- FORMULA LOGIC ---
   const handleSavePerfume = async (perfumeData) => {
     const currentDate = new Date().toISOString().split('T')[0];
     const { _id, ...restData } = perfumeData;
@@ -163,11 +193,11 @@ function App() {
       let savedData;
       if (_id) {
         const res = await axios.put(`${API_URL}/perfumes/${_id}`, { ...dataToSave, _id });
-        setPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
+        setPerfumes(prev => sortAlphabetically(prev.map(p => p._id === _id ? res.data : p)));
         savedData = res.data;
       } else {
         const res = await axios.post(`${API_URL}/perfumes`, dataToSave);
-        setPerfumes(prev => [...prev, res.data]);
+        setPerfumes(prev => sortAlphabetically([...prev, res.data]));
         savedData = res.data;
       }
 
@@ -183,7 +213,6 @@ function App() {
   };
 
   const handleDeletePerfume = async (id) => {
-    // NEW: Check if there are active physical batches blocking deletion
     const inProgressBatch = actualPerfumes.some(batch => batch.formulaId === id && batch.status === 'In Progress');
     if (inProgressBatch) {
       alert("Cannot delete this formula. You have an active, incomplete physical batch using it. Please complete or delete the batch first.");
@@ -201,14 +230,13 @@ function App() {
     }
   };
 
-  // --- INGREDIENT LOGIC ---
   const handleSaveIngredient = async (ingredientData) => {
     try {
       if (ingredientData.id) {
         const res = await axios.put(`${API_URL}/ingredients/${ingredientData.id}`, ingredientData);
         const updatedIng = res.data;
         
-        setInventory(prev => prev.map(inv => inv.id === updatedIng.id ? updatedIng : inv));
+        setInventory(prev => sortAlphabetically(prev.map(inv => inv.id === updatedIng.id ? updatedIng : inv)));
         
         setPerfumes(prevPerfumes => {
           const updatedPerfumes = prevPerfumes.map(perfume => {
@@ -235,7 +263,7 @@ function App() {
 
       } else {
         const res = await axios.post(`${API_URL}/ingredients`, ingredientData);
-        setInventory(prev => [...prev, res.data]);
+        setInventory(prev => sortAlphabetically([...prev, res.data]));
       }
       setIsIngredientModalOpen(false);
     } catch (error) {
@@ -293,8 +321,6 @@ function App() {
             let formula = perfumes.find(f => f._id === batch.formulaId);
             let isReadOnly = false;
             
-            // NEW: If formula was deleted, create a dummy formula to satisfy the workspace
-            // and flag it as Read Only
             if (!formula) {
               isReadOnly = true;
               formula = {
@@ -309,7 +335,8 @@ function App() {
               };
             }
             
-            handleStartMakePerfume(formula, batch.targetVolume, batch, isReadOnly);
+            // For continuing, we pass null for batchTag since it's already saved in the name
+            handleStartMakePerfume(formula, batch.targetVolume, batch, isReadOnly, '');
           }}
           onDelete={handleDeleteActualPerfume}
         />
@@ -320,7 +347,9 @@ function App() {
           formula={activeMakeData.formula}
           targetVolume={activeMakeData.targetVolume}
           existingBatch={activeMakeData.existingBatch}
-          isReadOnly={activeMakeData.isReadOnly} // NEW PROP
+          isReadOnly={activeMakeData.isReadOnly}
+          batchNumber={activeMakeData.batchNumber} // NEW PROP
+          batchTag={activeMakeData.batchTag}       // NEW PROP
           onBack={() => setCurrentView('actualDashboard')}
           onSave={handleSaveActualPerfume}
         />
@@ -336,56 +365,18 @@ function App() {
         />
       )}
 
-      {currentView === 'creator' && (
-        <PerfumeCreator 
-          perfumes={perfumes}
-          perfumeName={creatorPerfumeName} 
-          mode={creatorMode} 
-          inventory={inventory}
-          onBack={navigateToDashboard} 
-          onSave={handleSavePerfume}
-          onAddIngredient={openAddIngredientModal}
-        />
+      {currentView === 'creator' && (/* Unchanged */
+        <PerfumeCreator perfumes={perfumes} perfumeName={creatorPerfumeName} mode={creatorMode} inventory={inventory} onBack={navigateToDashboard} onSave={handleSavePerfume} onAddIngredient={openAddIngredientModal} />
+      )}
+      {currentView === 'editor' && (/* Unchanged */
+        <PerfumeEditor perfumes={perfumes} perfume={activePerfume} inventory={inventory} onBack={() => { if (window.location.search.includes('view=formula')) { setCurrentView('formulaDisplay'); } else { navigateToDashboard(); } }} onSave={handleSavePerfume} onAddIngredient={openAddIngredientModal} />
+      )}
+      {currentView === 'ingredients' && (/* Unchanged */
+        <IngredientsDashboard inventory={inventory} onBack={navigateToDashboard} onAdd={openAddIngredientModal} onEdit={openEditIngredientModal} onDelete={handleDeleteIngredient} />
       )}
 
-      {currentView === 'editor' && (
-        <PerfumeEditor 
-          perfumes={perfumes}
-          perfume={activePerfume} 
-          inventory={inventory}
-          onBack={() => {
-            if (window.location.search.includes('view=formula')) {
-              setCurrentView('formulaDisplay');
-            } else {
-              navigateToDashboard();
-            }
-          }} 
-          onSave={handleSavePerfume}
-          onAddIngredient={openAddIngredientModal}
-        />
-      )}
-
-      {currentView === 'ingredients' && (
-        <IngredientsDashboard 
-          inventory={inventory}
-          onBack={navigateToDashboard}
-          onAdd={openAddIngredientModal}
-          onEdit={openEditIngredientModal}
-          onDelete={handleDeleteIngredient}
-        />
-      )}
-
-      <IngredientModal 
-        isOpen={isIngredientModalOpen}
-        initialData={editingIngredient}
-        onClose={() => setIsIngredientModalOpen(false)}
-        onSave={handleSaveIngredient}
-      />
-
-      <PasswordModal 
-        isOpen={isPasswordModalOpen}
-        onClose={() => setIsPasswordModalOpen(false)}
-      />
+      <IngredientModal isOpen={isIngredientModalOpen} initialData={editingIngredient} onClose={() => setIsIngredientModalOpen(false)} onSave={handleSaveIngredient} />
+      <PasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </div>
   );
 }

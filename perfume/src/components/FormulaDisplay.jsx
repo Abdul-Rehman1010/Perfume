@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Edit, Trash2, Beaker, AlertCircle, X } from 'lucide-react';
 
-// FIXED: Added onMakePerfume to the destructured props
 const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) => {
-  // NEW: State for the modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetVolume, setTargetVolume] = useState('');
+  const [batchTag, setBatchTag] = useState(''); // NEW STATE
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!perfume) return null;
 
   const totalVolume = perfume.totalVolume;
 
-  // NEW: Custom submit handler for the modal
   const handleStartBatch = (e) => {
     e.preventDefault();
     const target = parseFloat(targetVolume);
@@ -23,7 +21,9 @@ const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) =>
     }
     
     setIsModalOpen(false);
-    onMakePerfume(perfume, target);
+    // Pass the batch tag (passing null for existingBatch and false for isReadOnly)
+    onMakePerfume(perfume, target, null, false, batchTag.trim());
+    setBatchTag('');
   };
 
   return (
@@ -53,9 +53,8 @@ const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) =>
             <Trash2 size={18} /> Delete
           </button>
           
-          {/* UPDATED: Button now opens the custom modal */}
           <button 
-            onClick={() => { setIsModalOpen(true); setTargetVolume('100'); setErrorMsg(''); }}
+            onClick={() => { setIsModalOpen(true); setTargetVolume('100'); setBatchTag(''); setErrorMsg(''); }}
             className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors shadow-sm"
           >
             <Beaker size={18} /> Make Perfume
@@ -118,7 +117,6 @@ const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) =>
         </div>
       </div>
 
-      {/* NEW: Themed Modal for Make Perfume */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl transition-colors">
@@ -137,7 +135,7 @@ const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) =>
                 </div>
               )}
 
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Target Size (ml)</label>
                 <input
                   type="number"
@@ -149,6 +147,20 @@ const FormulaDisplay = ({ perfume, onEdit, onDelete, onBack, onMakePerfume }) =>
                   value={targetVolume}
                   onChange={(e) => { setTargetVolume(e.target.value); setErrorMsg(''); }}
                   className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* NEW: Optional Batch Tag Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                  Batch Tag <span className="text-gray-400 font-normal">(Optional)</span>
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Client X Order"
+                  value={batchTag}
+                  onChange={(e) => setBatchTag(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 

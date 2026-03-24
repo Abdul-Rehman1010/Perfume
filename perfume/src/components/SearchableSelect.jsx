@@ -6,7 +6,6 @@ const SearchableSelect = ({ options, value, onChange, placeholder, renderOption 
   const [searchTerm, setSearchTerm] = useState('');
   const wrapperRef = useRef(null);
 
-  // Close the dropdown if the user clicks anywhere outside of it
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -19,13 +18,20 @@ const SearchableSelect = ({ options, value, onChange, placeholder, renderOption 
 
   const selectedOption = options.find(opt => opt.id === value);
 
-  const filteredOptions = options.filter(opt =>
-    opt.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // ENFORCED RENDER-LEVEL SORTING
+  const sortedOptions = [...options].sort((a, b) => {
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
+  });
+
+  const filteredOptions = sortedOptions.filter(opt => {
+    const name = opt.name || '';
+    return name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   return (
     <div ref={wrapperRef} className="relative w-full">
-      {/* The main input display */}
       <div
         className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-3 sm:py-2 flex justify-between items-center cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
@@ -36,7 +42,6 @@ const SearchableSelect = ({ options, value, onChange, placeholder, renderOption 
         <ChevronDown size={18} className={`text-gray-400 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </div>
 
-      {/* The dropdown and search menu */}
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden">
           <div className="p-2 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50">
@@ -61,7 +66,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder, renderOption 
                   onClick={() => {
                     onChange(opt.id);
                     setIsOpen(false);
-                    setSearchTerm(''); // Reset search on select
+                    setSearchTerm(''); 
                   }}
                 >
                   <span className="truncate pr-4">{renderOption ? renderOption(opt) : opt.name}</span>
