@@ -8,6 +8,7 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
   const [selectedIngredient, setSelectedIngredient] = useState('');
   const [amountToAdd, setAmountToAdd] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const totalVolume = useMemo(() => {
     return formula.reduce((sum, item) => sum + item.amount, 0);
@@ -96,22 +97,23 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
     setErrorMsg('');
   };
 
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     const duplicateName = checkDuplicateFormula();
     if (duplicateName) {
       setErrorMsg(`Cannot save! This exact percentage breakdown already exists in the formula: "${duplicateName}".`);
       return; 
     }
 
-    onSave({
+    setIsSaving(true); // Disable button immediately
+    await onSave({
       _id: null,
       name: perfumeName,
       formula,
       totalVolume,
       pricePer50ml: finalPricePer50ml
     });
+    setIsSaving(false); // Re-enable if it fails
   };
-
   const isSaveDisabled = mode === 'formula' ? totalVolume !== 100 : formula.length === 0;
 
   return (
@@ -148,12 +150,12 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
           )}
           <button 
             onClick={handleSaveClick}
-            disabled={isSaveDisabled}
+            disabled={isSaveDisabled || isSaving}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
           >
             <Save size={20} />
-            <span className="hidden sm:inline">Create Perfume</span>
-            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Create Perfume'}</span>
+            <span className="sm:hidden">{isSaving ? '...' : 'Create'}</span>
           </button>
         </div>
       </header>

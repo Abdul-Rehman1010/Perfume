@@ -12,6 +12,8 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
   const [isSaveAsNewModalOpen, setIsSaveAsNewModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
   const [modalErrorMsg, setModalErrorMsg] = useState('');
+  const [isSaving, setIsSaving] = useState(false); // NEW STATE
+  const [isSavingNew, setIsSavingNew] = useState(false); // NEW STATE
 
   const totalVolume = useMemo(() => {
     return formula.reduce((sum, item) => sum + item.amount, 0);
@@ -104,20 +106,22 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
     setErrorMsg('');
   };
 
-  const handleUpdateClick = () => {
+  const handleUpdateClick = async () => {
     const duplicateName = checkDuplicateFormula(false);
     if (duplicateName) {
       setErrorMsg(`Cannot update! This exact percentage breakdown already exists in: "${duplicateName}".`);
       return; 
     }
 
-    onSave({
+    setIsSaving(true);
+    await onSave({
       _id: perfume._id,
       name: perfume.name,
       formula,
       totalVolume,
       pricePer50ml: finalPricePer50ml
     });
+    setIsSaving(false);
   };
 
   const handleSaveAsNewSubmit = (e) => {
@@ -183,12 +187,12 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
             </button>
             <button 
               onClick={handleUpdateClick}
-              disabled={!hasChanges || formula.length === 0}
+              disabled={!hasChanges || formula.length === 0 || isSaving}
               className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors whitespace-nowrap"
             >
               <Save size={20} />
-              <span className="hidden sm:inline">Update</span>
-              <span className="sm:hidden">Update</span>
+              <span className="hidden sm:inline">{isSaving ? 'Updating...' : 'Update'}</span>
+              <span className="sm:hidden">{isSaving ? '...' : 'Update'}</span>
             </button>
           </div>
         </div>

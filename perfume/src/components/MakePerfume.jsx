@@ -19,6 +19,7 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
   
   const [historyStack, setHistoryStack] = useState([]);
   const [inputAmounts, setInputAmounts] = useState({});
+  const [isSaving, setIsSaving] = useState(false); // NEW STATE
 
   // NEW: Construct the display name for the batch
   const displayTitle = existingBatch 
@@ -144,12 +145,13 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
     return displayProgress.reduce((sum, ing) => sum + ing.loggedAmount, 0);
   }, [displayProgress]);
 
-  const handleSaveAndExit = (forceComplete = false) => {
+  const handleSaveAndExit = async (forceComplete = false) => {
     if (isReadOnly) {
       onBack();
       return;
     }
 
+    setIsSaving(true);
     const status = (isFullyComplete || forceComplete) ? 'Completed' : 'In Progress';
     
     const dataToSave = {
@@ -166,7 +168,8 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
       }))
     };
     
-    onSave(dataToSave);
+    await onSave(dataToSave);
+    setIsSaving(false);
   };
 
   return (
@@ -174,7 +177,8 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <button 
-            onClick={() => isReadOnly ? onBack() : handleSaveAndExit(false)} 
+            onClick={() => isReadOnly ? onBack() : handleSaveAndExit(false)}
+            disabled={isSaving} 
             className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors shrink-0"
             title={isReadOnly ? "Go Back" : "Save and Go Back"}
           >
@@ -215,9 +219,10 @@ const MakePerfume = ({ formula, targetVolume, existingBatch, isReadOnly = false,
             </button>
             <button 
               onClick={() => handleSaveAndExit(isFullyComplete)}
+              disabled={isSaving}
               className="flex-1 md:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"
             >
-              <Save size={18} /> Save Progress
+              <Save size={18} /> {isSaving ? 'Saving...' : 'Save Progress'}
             </button>
           </div>
         )}
