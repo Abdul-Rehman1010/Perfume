@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Save, Plus, Trash2, History, AlertCircle, Copy, X } from 'lucide-react';
+import SearchableSelect from './SearchableSelect'; // IMPORT NEW COMPONENT
 
 const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngredient }) => {
   const [formula, setFormula] = useState(perfume?.formula || []);
@@ -8,7 +9,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
   const [amountToAdd, setAmountToAdd] = useState('');
   const [errorMsg, setErrorMsg] = useState(''); 
   
-  // NEW: Save As New Modal States
   const [isSaveAsNewModalOpen, setIsSaveAsNewModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
   const [modalErrorMsg, setModalErrorMsg] = useState('');
@@ -25,12 +25,10 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
     }, 0);
   }, [formula, totalVolume]);
 
-  // NEW: Detect if any edits were actually made
   const hasChanges = useMemo(() => {
     if (!perfume || !perfume.formula) return true;
     if (perfume.formula.length !== formula.length) return true;
 
-    // Sort both arrays by ID to safely compare their contents
     const orig = [...perfume.formula].sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
     const curr = [...formula].sort((a, b) => a.ingredientId.localeCompare(b.ingredientId));
 
@@ -41,29 +39,21 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
     return false;
   }, [formula, perfume]);
 
-  // UPDATED: Duplication check now accepts a flag to know if we are saving as new
   const checkDuplicateFormula = (checkingAsNew = false) => {
     if (formula.length === 0 || totalVolume === 0) return false;
 
     const currentSignature = [...formula]
-      .map(item => ({
-        id: item.ingredientId,
-        pct: ((item.amount / totalVolume) * 100).toFixed(2)
-      }))
+      .map(item => ({ id: item.ingredientId, pct: ((item.amount / totalVolume) * 100).toFixed(2) }))
       .sort((a, b) => a.id.localeCompare(b.id));
     
     const currentSigString = JSON.stringify(currentSignature);
 
     for (const p of perfumes) {
-      // If updating, ignore itself. If saving as new, check against everything.
       if (!checkingAsNew && p._id === perfume._id) continue;
       if (p.totalVolume === 0 || p.formula.length === 0) continue;
 
       const compareSignature = [...p.formula]
-        .map(item => ({
-          id: item.ingredientId,
-          pct: ((item.amount / p.totalVolume) * 100).toFixed(2)
-        }))
+        .map(item => ({ id: item.ingredientId, pct: ((item.amount / p.totalVolume) * 100).toFixed(2) }))
         .sort((a, b) => a.id.localeCompare(b.id));
 
       if (currentSigString === JSON.stringify(compareSignature)) {
@@ -114,7 +104,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
     setErrorMsg('');
   };
 
-  // Standard Update Save
   const handleUpdateClick = () => {
     const duplicateName = checkDuplicateFormula(false);
     if (duplicateName) {
@@ -131,28 +120,24 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
     });
   };
 
-  // NEW: Save As New Submit Handler
   const handleSaveAsNewSubmit = (e) => {
     e.preventDefault();
     setModalErrorMsg('');
 
     const trimmedName = newPerfumeName.trim();
     if (trimmedName) {
-      // 1. Check for Duplicate Name
       const isDuplicateName = perfumes.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
       if (isDuplicateName) {
         setModalErrorMsg('A formula with this name already exists.');
         return;
       }
 
-      // 2. Check for Duplicate Percentage Formula (treating it as a new entity)
       const duplicateFormulaName = checkDuplicateFormula(true);
       if (duplicateFormulaName) {
         setModalErrorMsg(`Cannot save! This exact percentage breakdown already exists in: "${duplicateFormulaName}".`);
         return;
       }
 
-      // 3. Save as New (Passing _id: null triggers a new DB entry in App.jsx)
       onSave({
         _id: null,
         name: trimmedName,
@@ -187,7 +172,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
           </div>
           
           <div className="flex gap-2 w-full sm:w-auto">
-            {/* NEW: Save As New Button */}
             <button 
               onClick={() => { setIsSaveAsNewModalOpen(true); setModalErrorMsg(''); setNewPerfumeName(''); }}
               disabled={!hasChanges || formula.length === 0}
@@ -197,8 +181,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
               <span className="hidden sm:inline">Save as New</span>
               <span className="sm:hidden">As New</span>
             </button>
-
-            {/* UPDATED: Normal Save Button */}
             <button 
               onClick={handleUpdateClick}
               disabled={!hasChanges || formula.length === 0}
@@ -225,18 +207,14 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
             <form onSubmit={handleAddAmount} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Ingredient</label>
-                <select 
+                {/* NEW SEARCHABLE SELECT IMPLEMENTED HERE */}
+                <SearchableSelect 
+                  options={inventory}
                   value={selectedIngredient}
-                  onChange={(e) => { setSelectedIngredient(e.target.value); setErrorMsg(''); }}
-                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors appearance-none"
-                >
-                  <option value="">-- Choose --</option>
-                  {inventory.map(inv => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.name} (Rs {inv.pricePer50ml}/50ml)
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => { setSelectedIngredient(val); setErrorMsg(''); }}
+                  placeholder="-- Search or select --"
+                  renderOption={(inv) => `${inv.name} (Rs ${inv.pricePer50ml}/50ml)`}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount to Add (ml)</label>
@@ -291,7 +269,7 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
           <div className="p-5 sm:p-6 pb-4 sm:pb-6 flex justify-between items-end border-b border-gray-100 dark:border-gray-700">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">Final Formula</h2>
-              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume} ml</span></p>
+              <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1">Total Volume: <span className="font-bold text-gray-900 dark:text-gray-100">{totalVolume}</span></p>
             </div>
           </div>
 
@@ -349,7 +327,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
         </div>
       </div>
 
-      {/* NEW: Save As New Modal */}
       {isSaveAsNewModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 transition-colors shadow-2xl">
@@ -401,7 +378,6 @@ const PerfumeEditor = ({ perfumes, perfume, inventory, onBack, onSave, onAddIngr
           </div>
         </div>
       )}
-
     </div>
   );
 };

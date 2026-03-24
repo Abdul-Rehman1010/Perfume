@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowLeft, Save, Plus, Trash2, History, AlertCircle } from 'lucide-react';
+import SearchableSelect from './SearchableSelect'; // IMPORT NEW COMPONENT
 
 const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave, onAddIngredient }) => {
   const [formula, setFormula] = useState([]);
@@ -20,33 +21,24 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
     }, 0);
   }, [formula, totalVolume]);
 
-  // NEW: Helper function to check strict percentage matches
   const checkDuplicateFormula = () => {
     if (formula.length === 0 || totalVolume === 0) return false;
 
-    // Create a normalized percentage signature for the current formula
     const currentSignature = [...formula]
-      .map(item => ({
-        id: item.ingredientId,
-        pct: ((item.amount / totalVolume) * 100).toFixed(2)
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID so order doesn't matter
+      .map(item => ({ id: item.ingredientId, pct: ((item.amount / totalVolume) * 100).toFixed(2) }))
+      .sort((a, b) => a.id.localeCompare(b.id));
     
     const currentSigString = JSON.stringify(currentSignature);
 
-    // Compare against existing formulas
     for (const p of perfumes) {
       if (p.totalVolume === 0 || p.formula.length === 0) continue;
 
       const compareSignature = [...p.formula]
-        .map(item => ({
-          id: item.ingredientId,
-          pct: ((item.amount / p.totalVolume) * 100).toFixed(2)
-        }))
+        .map(item => ({ id: item.ingredientId, pct: ((item.amount / p.totalVolume) * 100).toFixed(2) }))
         .sort((a, b) => a.id.localeCompare(b.id));
 
       if (currentSigString === JSON.stringify(compareSignature)) {
-        return p.name; // Return duplicate name to alert the user
+        return p.name;
       }
     }
     return false;
@@ -105,7 +97,6 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
   };
 
   const handleSaveClick = () => {
-    // NEW: Run the duplication check before saving
     const duplicateName = checkDuplicateFormula();
     if (duplicateName) {
       setErrorMsg(`Cannot save! This exact percentage breakdown already exists in the formula: "${duplicateName}".`);
@@ -125,8 +116,7 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto flex flex-col min-h-screen">
-       {/* ... (Keep existing UI rendering exactly the same as previously provided) ... */}
-       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 sm:mb-8 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 sm:mb-8 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <button onClick={onBack} className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors shrink-0">
             <ArrowLeft size={20} />
@@ -143,7 +133,6 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
         </div>
         
         <div className="flex items-center justify-between w-full md:w-auto gap-4 sm:gap-6 border-t md:border-0 border-gray-100 dark:border-gray-700 pt-4 md:pt-0">
-          
           {mode === 'formula' ? (
             <div className="text-left md:text-right">
               <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">Formula Completion</p>
@@ -157,11 +146,9 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
               <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">Rs {finalPricePer50ml.toFixed(2)}</p>
             </div>
           )}
-
           <button 
             onClick={handleSaveClick}
             disabled={isSaveDisabled}
-            title={mode === 'formula' && totalVolume !== 100 ? "Formula must be exactly 100%" : ""}
             className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg flex items-center gap-2 font-medium transition-colors whitespace-nowrap"
           >
             <Save size={20} />
@@ -184,18 +171,14 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
             <form onSubmit={handleAddAmount} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Ingredient</label>
-                <select 
+                {/* NEW SEARCHABLE SELECT IMPLEMENTED HERE */}
+                <SearchableSelect 
+                  options={inventory}
                   value={selectedIngredient}
-                  onChange={(e) => { setSelectedIngredient(e.target.value); setErrorMsg(''); }}
-                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-3 sm:py-2 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors appearance-none"
-                >
-                  <option value="">-- Choose --</option>
-                  {inventory.map(inv => (
-                    <option key={inv.id} value={inv.id}>
-                      {inv.name} (Rs {inv.pricePer50ml}/50ml)
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => { setSelectedIngredient(val); setErrorMsg(''); }}
+                  placeholder="-- Search or select --"
+                  renderOption={(inv) => `${inv.name} (Rs ${inv.pricePer50ml}/50ml)`}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -276,12 +259,8 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Ingredient</th>
-                  <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
-                    {mode === 'formula' ? 'Percentage' : 'Amount'}
-                  </th>
-                  {mode === 'lab' && (
-                    <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Percentage</th>
-                  )}
+                  <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">{mode === 'formula' ? 'Percentage' : 'Amount'}</th>
+                  {mode === 'lab' && <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Percentage</th>}
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Cost Share</th>
                   <th className="py-3 px-4 sm:px-6 font-semibold text-gray-600 dark:text-gray-300 text-xs sm:text-sm w-12"></th>
                 </tr>
@@ -301,10 +280,7 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
                     return (
                       <tr key={item.ingredientId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td className="py-3 px-4 sm:px-6 font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base">{item.name}</td>
-                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">
-                          {item.amount.toFixed(2)}{mode === 'formula' ? '%' : ' ml'}
-                        </td>
-                        
+                        <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">{item.amount.toFixed(2)}{mode === 'formula' ? '%' : ' ml'}</td>
                         {mode === 'lab' && (
                           <td className="py-3 px-4 sm:px-6">
                             <div className="flex items-center gap-2">
@@ -315,7 +291,6 @@ const PerfumeCreator = ({ perfumes, perfumeName, mode, inventory, onBack, onSave
                             </div>
                           </td>
                         )}
-
                         <td className="py-3 px-4 sm:px-6 text-gray-600 dark:text-gray-300 text-sm sm:text-base">Rs {costContribution.toFixed(2)}</td>
                         <td className="py-3 px-4 sm:px-6 text-right">
                           <button 

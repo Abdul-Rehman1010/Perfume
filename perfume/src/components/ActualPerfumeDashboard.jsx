@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Beaker, Plus, ArrowRight, CheckCircle2, AlertCircle, Trash2, X } from 'lucide-react';
+import SearchableSelect from './SearchableSelect'; // IMPORT NEW COMPONENT
 
 const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBatch, onDelete, onBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +17,13 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
       setTargetVolume('');
     }
   };
+
+  // Convert formulas to the { id, name } structure required by SearchableSelect
+  const formulaOptions = formulas.map(f => ({
+    id: f._id,
+    name: f.name,
+    totalVolume: f.totalVolume
+  }));
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto min-h-screen">
@@ -98,7 +106,7 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                     </button>
                   ) : (
                     <button 
-                      onClick={() => onContinue(batch)} // Can still view it
+                      onClick={() => onContinue(batch)}
                       className="flex-1 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300 px-4 py-2.5 rounded-lg flex justify-center items-center gap-2 font-medium transition-colors"
                     >
                       View Log
@@ -111,7 +119,6 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
         </div>
       )}
 
-      {/* New Batch Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
@@ -123,17 +130,14 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Select Formula</label>
-                <select 
-                  required
+                {/* NEW SEARCHABLE SELECT IMPLEMENTED HERE */}
+                <SearchableSelect 
+                  options={formulaOptions}
                   value={selectedFormulaId}
-                  onChange={(e) => setSelectedFormulaId(e.target.value)}
-                  className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">-- Choose a formula --</option>
-                  {formulas.map(f => (
-                    <option key={f._id} value={f._id}>{f.name} ({f.totalVolume}ml base)</option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedFormulaId(val)}
+                  placeholder="-- Search or select formula --"
+                  renderOption={(f) => `${f.name} (${f.totalVolume}ml base)`}
+                />
               </div>
               
               <div className="mb-8">
@@ -141,8 +145,8 @@ const ActualPerfumeDashboard = ({ actualPerfumes, formulas, onContinue, onNewBat
                 <input 
                   type="number" 
                   required
-                  min="1"
-                  step="1"
+                  min="0.1"
+                  step="0.1"
                   placeholder="e.g. 100"
                   value={targetVolume}
                   onChange={(e) => setTargetVolume(e.target.value)}
