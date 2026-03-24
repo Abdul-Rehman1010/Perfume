@@ -17,23 +17,19 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
   
-  // Data States
   const [inventory, setInventory] = useState([]);
   const [perfumes, setPerfumes] = useState([]);
   const [actualPerfumes, setActualPerfumes] = useState([]);
 
-  // Active Context States
   const [activePerfume, setActivePerfume] = useState(null);
   const [creatorPerfumeName, setCreatorPerfumeName] = useState('');
   const [creatorMode, setCreatorMode] = useState('lab');
   const [activeMakeData, setActiveMakeData] = useState(null); 
 
-  // Modals
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
 
-  // Cross-Tab Logout Synchronization
   useEffect(() => {
     const syncLogout = (event) => {
       if (event.key === 'isLoggedIn' && event.newValue !== 'true') {
@@ -46,7 +42,6 @@ function App() {
     return () => window.removeEventListener('storage', syncLogout);
   }, []);
 
-  // Initial Data Fetch
   useEffect(() => {
     if (isLoggedIn) {
       const fetchInitialData = async () => {
@@ -60,7 +55,6 @@ function App() {
           setPerfumes(perfumesRes.data);
           setActualPerfumes(actualsRes.data);
 
-          // Check URL to see if this is a new tab opened to view a specific formula
           const params = new URLSearchParams(window.location.search);
           const viewParam = params.get('view');
           const idParam = params.get('id');
@@ -123,30 +117,24 @@ function App() {
   };
 
   // --- MAKE PERFUME LOGIC ---
-  const handleStartMakePerfume = (formula, targetVolume, existingBatch = null) => {
-    setActiveMakeData({ formula, targetVolume, existingBatch });
+  const handleStartMakePerfume = (formula, targetVolume, existingBatch = null, isReadOnly = false) => {
+    setActiveMakeData({ formula, targetVolume, existingBatch, isReadOnly });
     setCurrentView('makePerfume');
   };
 
   const handleSaveActualPerfume = async (actualData) => {
     const currentDate = new Date().toLocaleString();
-    
-    // THE FIX: Destructure out _id so we don't send `_id: null` to the backend!
-    // This allows Mongoose to generate the real ID and return it to React state correctly.
     const { _id, ...restData } = actualData; 
     const dataToSave = { ...restData, lastModified: currentDate };
     
     try {
       if (_id) {
-        // Updating an existing batch
         const res = await axios.put(`${API_URL}/actual-perfumes/${_id}`, { ...dataToSave, _id });
         setActualPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
       } else {
-        // Creating a brand new batch
         const res = await axios.post(`${API_URL}/actual-perfumes`, dataToSave);
         setActualPerfumes(prev => [...prev, res.data]);
       }
-      
       setCurrentView('actualDashboard');
       setActiveMakeData(null);
     } catch (error) {
@@ -183,7 +171,6 @@ function App() {
         savedData = res.data;
       }
 
-      // Smart navigation back to display if it was opened in a new tab
       if (currentView === 'editor' && window.location.search.includes('view=formula')) {
         setActivePerfume(savedData);
         setCurrentView('formulaDisplay');
@@ -196,6 +183,13 @@ function App() {
   };
 
   const handleDeletePerfume = async (id) => {
+    // NEW: Check if there are active physical batches blocking deletion
+    const inProgressBatch = actualPerfumes.some(batch => batch.formulaId === id && batch.status === 'In Progress');
+    if (inProgressBatch) {
+      alert("Cannot delete this formula. You have an active, incomplete physical batch using it. Please complete or delete the batch first.");
+      return;
+    }
+
     if (window.confirm('Are you sure you want to delete this formula?')) {
       try {
         await axios.delete(`${API_URL}/perfumes/${id}`);
@@ -296,8 +290,26 @@ function App() {
           onBack={navigateToDashboard}
           onNewBatch={handleStartMakePerfume}
           onContinue={(batch) => {
-            const formula = perfumes.find(f => f._id === batch.formulaId);
-            handleStartMakePerfume(formula, batch.targetVolume, batch);
+            let formula = perfumes.find(f => f._id === batch.formulaId);
+            let isReadOnly = false;
+            
+            // NEW: If formula was deleted, create a dummy formula to satisfy the workspace
+            // and flag it as Read Only
+            if (!formula) {
+              isReadOnly = true;
+              formula = {
+                _id: batch.formulaId,
+                name: batch.formulaName, 
+                totalVolume: batch.targetVolume,
+                formula: batch.ingredientsLog.map(ing => ({
+                  ingredientId: ing.ingredientId,
+                  name: ing.name,
+                  amount: ing.targetAmount
+                }))
+              };
+            }
+            
+            handleStartMakePerfume(formula, batch.targetVolume, batch, isReadOnly);
           }}
           onDelete={handleDeleteActualPerfume}
         />
@@ -308,6 +320,7 @@ function App() {
           formula={activeMakeData.formula}
           targetVolume={activeMakeData.targetVolume}
           existingBatch={activeMakeData.existingBatch}
+          isReadOnly={activeMakeData.isReadOnly} // NEW PROP
           onBack={() => setCurrentView('actualDashboard')}
           onSave={handleSaveActualPerfume}
         />
