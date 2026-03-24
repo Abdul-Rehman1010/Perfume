@@ -7,6 +7,7 @@ require('dotenv').config();
 const Ingredient = require('./models/Ingredient');
 const Perfume = require('./models/Perfume');
 const Auth = require('./models/Auth');
+const ActualPerfume = require('./models/ActualPerfume');
 
 const app = express();
 
@@ -89,6 +90,51 @@ app.put('/api/auth/password', async (req, res) => {
     authData.password = newPassword;
     await authData.save();
     res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all actual perfumes
+app.get('/api/actual-perfumes', async (req, res) => {
+  try {
+    const actuals = await ActualPerfume.find();
+    res.json(actuals);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create new actual perfume
+app.post('/api/actual-perfumes', async (req, res) => {
+  try {
+    const newActual = new ActualPerfume(req.body);
+    const savedActual = await newActual.save();
+    res.status(201).json(savedActual);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update actual perfume
+app.put('/api/actual-perfumes/:id', async (req, res) => {
+  try {
+    const updatedActual = await ActualPerfume.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    res.json(updatedActual);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete actual perfume
+app.delete('/api/actual-perfumes/:id', async (req, res) => {
+  try {
+    await ActualPerfume.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Actual perfume deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

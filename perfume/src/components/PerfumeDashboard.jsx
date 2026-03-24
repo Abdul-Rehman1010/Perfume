@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut, AlertCircle } from 'lucide-react'; // Added AlertCircle
+import { Grid, List, Edit, Trash2, Plus, Beaker, X, Download, Lock, LogOut, AlertCircle } from 'lucide-react';
 
-const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngredients, onChangePassword, onLogout }) => {
+// FIXED: Added onOpenActualDashboard to the props list
+const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngredients, onOpenActualDashboard, onChangePassword, onLogout }) => {
   const [viewMode, setViewMode] = useState('grid');
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [newPerfumeName, setNewPerfumeName] = useState('');
   const [creationMode, setCreationMode] = useState('lab');
-  const [nameError, setNameError] = useState(''); // NEW: Error state for duplicate name
+  const [nameError, setNameError] = useState(''); 
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    setNameError(''); // Reset error
+    setNameError(''); 
     
     const trimmedName = newPerfumeName.trim();
     if (trimmedName) {
-      // NEW: Check for duplicate name (case-insensitive)
       const isDuplicate = perfumes.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
       
       if (isDuplicate) {
@@ -31,7 +31,6 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
   };
 
   const handleDownloadExcel = async () => {
-    // ... (Keep existing handleDownloadExcel logic exactly the same)
     try {
       const response = await axios.get('https://perfume-one-black.vercel.app/api/export/perfumes', {
         responseType: 'blob'
@@ -51,7 +50,6 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
 
   return (
     <div className="p-4 sm:p-8">
-      {/* ... (Keep existing header and grid/list rendering exactly the same) ... */}
       <div className="max-w-6xl mx-auto">
         <header className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
           <div className="w-full md:w-auto">
@@ -80,6 +78,13 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
               <button onClick={onManageIngredients} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
                 <Beaker size={18} /><span>Ingredients</span>
               </button>
+              
+              {/* FIXED: Removed the invalid JSX comment here */}
+              <button onClick={onOpenActualDashboard} className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors shadow-sm">
+                <Beaker size={18} />
+                <span>Physical Batches</span>
+              </button>
+              
               <button onClick={() => { setIsNameModalOpen(true); setNameError(''); }} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors text-sm sm:text-base shadow-sm">
                 <Plus size={18} /><span>New Formula</span>
               </button>
@@ -98,7 +103,14 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
                 <div key={perfume._id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all">
                   <div>
                     <div className="flex justify-between items-start">
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{perfume.name}</h3>
+                      <a 
+                        href={`?view=formula&id=${perfume._id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xl font-bold text-gray-900 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline-offset-4 hover:underline"
+                      >
+                        {perfume.name}
+                      </a>
                       <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2.5 py-0.5 rounded border border-green-200 dark:border-green-800 transition-colors">
                         Rs {perfume.pricePer50ml.toFixed(2)} / 50ml
                       </span>
@@ -117,7 +129,16 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
               ) : (
                 <div key={perfume._id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:px-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:shadow-sm transition-all">
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 w-full">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 min-w-[150px]">{perfume.name}</h3>
+                    
+                    <a 
+                      href={`?view=formula&id=${perfume._id}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-lg font-bold text-gray-900 dark:text-gray-100 min-w-[150px] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline-offset-4 hover:underline"
+                    >
+                      {perfume.name}
+                    </a>
+                    
                     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                       <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-xs font-semibold px-2 py-0.5 rounded border border-green-200 dark:border-green-800">Rs {perfume.pricePer50ml.toFixed(2)}</span>
                       <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span><span>{perfume.totalVolume}ml</span>
@@ -138,7 +159,7 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
 
       {isNameModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 transition-colors shadow-2xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Start New Formula</h2>
               <button onClick={() => setIsNameModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -147,7 +168,6 @@ const PerfumeDashboard = ({ perfumes, onCreate, onEdit, onDelete, onManageIngred
             </div>
             <form onSubmit={handleCreateSubmit}>
               
-              {/* NEW: Error Display */}
               {nameError && (
                 <div className="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg flex items-start gap-2">
                   <AlertCircle size={16} className="mt-0.5 shrink-0" />

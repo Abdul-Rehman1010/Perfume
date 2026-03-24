@@ -4,6 +4,9 @@ import PerfumeDashboard from './components/PerfumeDashboard';
 import PerfumeEditor from './components/PerfumeEditor';
 import PerfumeCreator from './components/PerfumeCreator';
 import IngredientsDashboard from './components/IngredientsDashboard';
+import FormulaDisplay from './components/FormulaDisplay';
+import ActualPerfumeDashboard from './components/ActualPerfumeDashboard';
+import MakePerfume from './components/MakePerfume';
 import IngredientModal from './components/IngredientModal';
 import PasswordModal from './components/PasswordModal';
 import LoginPage from './components/LoginPage';
@@ -13,25 +16,65 @@ const API_URL = 'https://perfume-one-black.vercel.app/api';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [currentView, setCurrentView] = useState('dashboard');
+  
+  // Data States
+  const [inventory, setInventory] = useState([]);
+  const [perfumes, setPerfumes] = useState([]);
+  const [actualPerfumes, setActualPerfumes] = useState([]);
+
+  // Active Context States
   const [activePerfume, setActivePerfume] = useState(null);
   const [creatorPerfumeName, setCreatorPerfumeName] = useState('');
   const [creatorMode, setCreatorMode] = useState('lab');
+  const [activeMakeData, setActiveMakeData] = useState(null); 
+
+  // Modals
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState(null);
-  const [inventory, setInventory] = useState([]);
-  const [perfumes, setPerfumes] = useState([]);
 
+  // Cross-Tab Logout Synchronization
+  useEffect(() => {
+    const syncLogout = (event) => {
+      if (event.key === 'isLoggedIn' && event.newValue !== 'true') {
+        setIsLoggedIn(false);
+        setCurrentView('dashboard');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    window.addEventListener('storage', syncLogout);
+    return () => window.removeEventListener('storage', syncLogout);
+  }, []);
+
+  // Initial Data Fetch
   useEffect(() => {
     if (isLoggedIn) {
       const fetchInitialData = async () => {
         try {
-          const [ingredientsRes, perfumesRes] = await Promise.all([
+          const [ingredientsRes, perfumesRes, actualsRes] = await Promise.all([
             axios.get(`${API_URL}/ingredients`),
-            axios.get(`${API_URL}/perfumes`)
+            axios.get(`${API_URL}/perfumes`),
+            axios.get(`${API_URL}/actual-perfumes`) 
           ]);
           setInventory(ingredientsRes.data);
           setPerfumes(perfumesRes.data);
+          setActualPerfumes(actualsRes.data);
+
+          // Check URL to see if this is a new tab opened to view a specific formula
+          const params = new URLSearchParams(window.location.search);
+          const viewParam = params.get('view');
+          const idParam = params.get('id');
+
+          if (viewParam === 'formula' && idParam) {
+            const targetPerfume = perfumesRes.data.find(p => p._id === idParam);
+            if (targetPerfume) {
+              setActivePerfume(targetPerfume);
+              setCurrentView('formulaDisplay');
+            } else {
+              window.history.replaceState({}, document.title, window.location.pathname);
+              setCurrentView('dashboard');
+            }
+          }
         } catch (error) {
           console.error(error);
         }
@@ -49,23 +92,20 @@ function App() {
     localStorage.removeItem('isLoggedIn');
     setIsLoggedIn(false);
     setCurrentView('dashboard');
-  };
-
-  const navigateToEditor = (perfumeData) => {
-    setActivePerfume(perfumeData);
-    setCurrentView('editor');
-  };
-
-  const navigateToCreator = (perfumeName, mode) => {
-    setCreatorPerfumeName(perfumeName);
-    setCreatorMode(mode);
-    setCurrentView('creator');
+    window.history.replaceState({}, document.title, window.location.pathname);
   };
 
   const navigateToDashboard = () => {
     setActivePerfume(null);
     setCreatorPerfumeName('');
+    setActiveMakeData(null);
     setCurrentView('dashboard');
+    window.history.replaceState({}, document.title, window.location.pathname); 
+  };
+
+  const navigateToEditor = (perfumeData) => {
+    setActivePerfume(perfumeData);
+    setCurrentView('editor');
   };
 
   const navigateToIngredients = () => {
@@ -82,13 +122,98 @@ function App() {
     setIsIngredientModalOpen(true);
   };
 
+  // --- MAKE PERFUME LOGIC ---
+  const handleStartMakePerfume = (formula, targetVolume, existingBatch = null) => {
+    setActiveMakeData({ formula, targetVolume, existingBatch });
+    setCurrentView('makePerfume');
+  };
+
+  const handleSaveActualPerfume = async (actualData) => {
+    const currentDate = new Date().toLocaleString();
+    
+    // THE FIX: Destructure out _id so we don't send `_id: null` to the backend!
+    // This allows Mongoose to generate the real ID and return it to React state correctly.
+    const { _id, ...restData } = actualData; 
+    const dataToSave = { ...restData, lastModified: currentDate };
+    
+    try {
+      if (_id) {
+        // Updating an existing batch
+        const res = await axios.put(`${API_URL}/actual-perfumes/${_id}`, { ...dataToSave, _id });
+        setActualPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
+      } else {
+        // Creating a brand new batch
+        const res = await axios.post(`${API_URL}/actual-perfumes`, dataToSave);
+        setActualPerfumes(prev => [...prev, res.data]);
+      }
+      
+      setCurrentView('actualDashboard');
+      setActiveMakeData(null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeleteActualPerfume = async (id) => {
+    if (window.confirm('Delete this batch log?')) {
+      try {
+        await axios.delete(`${API_URL}/actual-perfumes/${id}`);
+        setActualPerfumes(prev => prev.filter(p => p._id !== id));
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+
+  // --- FORMULA LOGIC ---
+  const handleSavePerfume = async (perfumeData) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const { _id, ...restData } = perfumeData;
+    const dataToSave = { ...restData, lastModified: currentDate };
+    
+    try {
+      let savedData;
+      if (_id) {
+        const res = await axios.put(`${API_URL}/perfumes/${_id}`, { ...dataToSave, _id });
+        setPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
+        savedData = res.data;
+      } else {
+        const res = await axios.post(`${API_URL}/perfumes`, dataToSave);
+        setPerfumes(prev => [...prev, res.data]);
+        savedData = res.data;
+      }
+
+      // Smart navigation back to display if it was opened in a new tab
+      if (currentView === 'editor' && window.location.search.includes('view=formula')) {
+        setActivePerfume(savedData);
+        setCurrentView('formulaDisplay');
+      } else {
+        navigateToDashboard();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleDeletePerfume = async (id) => {
+    if (window.confirm('Are you sure you want to delete this formula?')) {
+      try {
+        await axios.delete(`${API_URL}/perfumes/${id}`);
+        setPerfumes(prev => prev.filter(perfume => perfume._id !== id));
+        if (activePerfume && activePerfume._id === id) navigateToDashboard();
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+
+  // --- INGREDIENT LOGIC ---
   const handleSaveIngredient = async (ingredientData) => {
     try {
       if (ingredientData.id) {
         const res = await axios.put(`${API_URL}/ingredients/${ingredientData.id}`, ingredientData);
         const updatedIng = res.data;
         
-        // Use prev state to avoid stale closures
         setInventory(prev => prev.map(inv => inv.id === updatedIng.id ? updatedIng : inv));
         
         setPerfumes(prevPerfumes => {
@@ -144,65 +269,63 @@ function App() {
     }
   };
 
-  const handleSavePerfume = async (perfumeData) => {
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    // FIX: Destructure out _id so we don't accidentally send `_id: null` to the backend.
-    // This allows Mongoose to properly generate and return the real database ID.
-    const { _id, ...restData } = perfumeData;
-    const dataToSave = { ...restData, lastModified: currentDate };
-    
-    try {
-      if (_id) {
-        // We are updating an existing perfume
-        const res = await axios.put(`${API_URL}/perfumes/${_id}`, { ...dataToSave, _id });
-        // Use prev state to ensure we always update the latest version of the array
-        setPerfumes(prev => prev.map(p => p._id === _id ? res.data : p));
-      } else {
-        // We are creating a brand new perfume
-        const res = await axios.post(`${API_URL}/perfumes`, dataToSave);
-        // Use prev state to append the newly generated data (which now includes the real _id)
-        setPerfumes(prev => [...prev, res.data]);
-      }
-      navigateToDashboard();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleDeletePerfume = async (id) => {
-    if (window.confirm('Are you sure you want to delete this formula?')) {
-      try {
-        await axios.delete(`${API_URL}/perfumes/${id}`);
-        // Use prev state to safely remove the item
-        setPerfumes(prev => prev.filter(perfume => perfume._id !== id));
-      } catch (error) {
-        console.error(error);
-      }
-    }
-  };
-
   if (!isLoggedIn) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <div className="App font-sans text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-200">
+      
       {currentView === 'dashboard' && (
         <PerfumeDashboard 
           perfumes={perfumes}
-          onCreate={navigateToCreator} 
+          onCreate={(name, mode) => { setCreatorPerfumeName(name); setCreatorMode(mode); setCurrentView('creator'); }} 
           onEdit={navigateToEditor} 
           onDelete={handleDeletePerfume}
           onManageIngredients={navigateToIngredients}
+          onOpenActualDashboard={() => setCurrentView('actualDashboard')}
           onChangePassword={() => setIsPasswordModalOpen(true)}
           onLogout={handleLogout}
         />
       )}
+
+      {currentView === 'actualDashboard' && (
+        <ActualPerfumeDashboard 
+          actualPerfumes={actualPerfumes}
+          formulas={perfumes}
+          onBack={navigateToDashboard}
+          onNewBatch={handleStartMakePerfume}
+          onContinue={(batch) => {
+            const formula = perfumes.find(f => f._id === batch.formulaId);
+            handleStartMakePerfume(formula, batch.targetVolume, batch);
+          }}
+          onDelete={handleDeleteActualPerfume}
+        />
+      )}
+
+      {currentView === 'makePerfume' && activeMakeData && (
+        <MakePerfume 
+          formula={activeMakeData.formula}
+          targetVolume={activeMakeData.targetVolume}
+          existingBatch={activeMakeData.existingBatch}
+          onBack={() => setCurrentView('actualDashboard')}
+          onSave={handleSaveActualPerfume}
+        />
+      )}
       
+      {currentView === 'formulaDisplay' && (
+        <FormulaDisplay 
+          perfume={activePerfume}
+          onEdit={navigateToEditor}
+          onDelete={handleDeletePerfume}
+          onMakePerfume={handleStartMakePerfume}
+          onBack={navigateToDashboard}
+        />
+      )}
+
       {currentView === 'creator' && (
-        <PerfumeCreator
-          perfumes={perfumes} 
+        <PerfumeCreator 
+          perfumes={perfumes}
           perfumeName={creatorPerfumeName} 
           mode={creatorMode} 
           inventory={inventory}
@@ -217,7 +340,13 @@ function App() {
           perfumes={perfumes}
           perfume={activePerfume} 
           inventory={inventory}
-          onBack={navigateToDashboard} 
+          onBack={() => {
+            if (window.location.search.includes('view=formula')) {
+              setCurrentView('formulaDisplay');
+            } else {
+              navigateToDashboard();
+            }
+          }} 
           onSave={handleSavePerfume}
           onAddIngredient={openAddIngredientModal}
         />
